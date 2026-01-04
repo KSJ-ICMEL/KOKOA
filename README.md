@@ -1,1 +1,1 @@
-# KOKOA: Knowledge-Oriented kMC Optimizing Agent
+# KOKOA: \b{K}nowledge-Oriented kMC Optimizing Agent
