@@ -29,9 +29,12 @@ class Config:
     MAX_LOOPS = 10
     MAX_RESEARCH_ATTEMPTS = 3
     
+    INITIAL_STATE_DIR = "./initial_state"
+    RUNS_DIR = "./runs"
+    
     PERSIST_DIRECTORY = "./chroma_store"
     PDF_DIRECTORY = "./pdf"
-    WORKSPACE_DIR = "./workspace"
+    WORKSPACE_DIR = "./workspace"  # Legacy, will be removed
     
     CHUNK_SIZE = 1200
     CHUNK_OVERLAP = 300

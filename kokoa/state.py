@@ -3,16 +3,21 @@ KOKOA State Definitions
 """
 
 import os
+import json
+import shutil
 from typing import Optional, List, TypedDict
+from datetime import datetime
 from pydantic import BaseModel, Field
+
+from kokoa.config import Config
 
 
 class SimulationResult(BaseModel):
-    is_success: bool = Field(..., description="시뮬레이션 성공 여부")
-    conductivity: Optional[float] = Field(None, description="계산된 전도도 (S/cm)")
-    error_message: Optional[str] = Field(None, description="에러 메시지")
-    execution_log: str = Field(..., description="실행 로그")
-    image_path: Optional[str] = Field(None, description="생성된 이미지 경로")
+    is_success: bool = Field(...)
+    conductivity: Optional[float] = Field(None)
+    error_message: Optional[str] = Field(None)
+    execution_log: str = Field(...)
+    image_path: Optional[str] = Field(None)
 
 
 class AgentState(TypedDict):
@@ -33,38 +38,81 @@ class AgentState(TypedDict):
     research_query: Optional[str]
     knowledge_gap: Optional[str]
     research_attempts: int
-
-
-def load_initial_code(workspace_dir: str = "./workspace") -> str:
-    """initial_state.py 코드 로드 (Engineer가 수정 기반으로 사용)"""
-    initial_path = os.path.join(workspace_dir, "initial_state.py")
     
-    if os.path.exists(initial_path):
-        with open(initial_path, "r", encoding="utf-8") as f:
+    run_id: str
+    run_dir: str
+
+
+def load_initial_result() -> Optional[SimulationResult]:
+    """Load pre-run initial_state result from initial_state/initial_state.json"""
+    result_path = os.path.join(Config.INITIAL_STATE_DIR, "initial_state.json")
+    
+    if not os.path.exists(result_path):
+        return None
+    
+    with open(result_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    
+    return SimulationResult(
+        is_success=data.get("is_success", False),
+        conductivity=data.get("conductivity"),
+        error_message=data.get("error_message"),
+        execution_log=data.get("execution_log", ""),
+        image_path=data.get("image_path")
+    )
+
+
+def load_initial_code() -> str:
+    """Load initial_state.py code"""
+    code_path = os.path.join(Config.INITIAL_STATE_DIR, "initial_state.py")
+    
+    if os.path.exists(code_path):
+        with open(code_path, "r", encoding="utf-8") as f:
             return f.read()
     return ""
 
 
-def create_initial_state(goal: str, load_code: bool = False, workspace_dir: str = "./workspace") -> AgentState:
+def create_run_directory(run_id: str) -> str:
+    """Create run-specific directory with subdirectories"""
+    run_dir = os.path.join(Config.RUNS_DIR, run_id)
+    
+    os.makedirs(os.path.join(run_dir, "simulation"), exist_ok=True)
+    os.makedirs(os.path.join(run_dir, "simulation_result"), exist_ok=True)
+    os.makedirs(os.path.join(run_dir, "chroma_store"), exist_ok=True)
+    os.makedirs(os.path.join(run_dir, "pdf"), exist_ok=True)
+    
+    initial_chroma = Config.PERSIST_DIRECTORY
+    if os.path.exists(initial_chroma):
+        run_chroma = os.path.join(run_dir, "chroma_store")
+        if not os.listdir(run_chroma):
+            shutil.copytree(initial_chroma, run_chroma, dirs_exist_ok=True)
+    
+    return run_dir
+
+
+def create_initial_state(goal: str, run_id: str = None) -> AgentState:
     """
-    초기 상태 생성
+    Create initial state with run-specific directory
     
     Args:
-        goal: 연구 목표
-        load_code: True면 initial_state.py 코드를 python_code에 로드
-        workspace_dir: workspace 디렉토리 경로
+        goal: Research goal
+        run_id: Run ID (auto-generated if None)
     """
-    initial_code = ""
-    if load_code:
-        initial_code = load_initial_code(workspace_dir)
+    if run_id is None:
+        run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    run_dir = create_run_directory(run_id)
+    
+    initial_code = load_initial_code()
+    initial_result = load_initial_result()
     
     return {
         "goal": goal,
         "hypothesis": "",
         "python_code": initial_code,
-        "simulation_output": None,
+        "simulation_output": initial_result,
         "current_error_rate": 100.0,
-        "research_log": ["--- Research Log Started ---"],
+        "research_log": [f"--- Run {run_id} Started ---"],
         "failed_attempts": [],
         "iteration_count": 0,
         "status": "running",
@@ -73,5 +121,6 @@ def create_initial_state(goal: str, load_code: bool = False, workspace_dir: str 
         "research_query": None,
         "knowledge_gap": None,
         "research_attempts": 0,
+        "run_id": run_id,
+        "run_dir": run_dir,
     }
-

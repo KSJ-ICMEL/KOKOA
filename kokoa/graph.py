@@ -75,7 +75,7 @@ def build_workflow(theorist_node, engineer_node, simulator_node, analyst_node):
         {"theorist": "Theorist", "end": END}
     )
     
-    workflow.set_entry_point("Simulator")
+    workflow.set_entry_point("Analyst")
     
     memory = MemorySaver()
     app = workflow.compile(checkpointer=memory)
@@ -101,8 +101,12 @@ def run_experiment(app, goal: str, thread_id: str = None):
     config = {"configurable": {"thread_id": thread_id}}
     initial_state = create_initial_state(goal)
     
-    print(f"🚀 KOKOA 시작 (Thread: {thread_id})")
-    print(f"🎯 목표: {goal[:100]}...")
+    run_dir = initial_state.get("run_dir", "unknown")
+    run_id = initial_state.get("run_id", thread_id)
+    
+    print(f"🚀 KOKOA 시작 (Run: {run_id})")
+    print(f"📁 출력 디렉토리: {run_dir}")
+    print(f"🎯 목표: {goal[:80]}...")
     print("=" * 60)
     
     final_state = None
