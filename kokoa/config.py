@@ -41,6 +41,9 @@ class Config:
     
     ARXIV_MAX_DOCS = 3
     
+    # Simulation parameters
+    SIMULATION_TIME = 1e-9  # Target simulation time in seconds (default: 1ns)
+    
     @classmethod
     def from_env(cls):
         config = cls()

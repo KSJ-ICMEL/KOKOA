@@ -2,6 +2,11 @@
 import numpy as np
 from pymatgen.core import Structure
 import os
+import sys
+
+# Add project root to path for config import
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from kokoa.config import Config
 
 # === 1. Structure Loading ===
 cif_path = "./Li4.47La3Zr2O12.cif"
@@ -108,7 +113,7 @@ class KMCSimulator:
 sim_params = {'T': 300, 'E_a': 0.28, 'nu': 1e13, 'volume': structure.volume}
 sim = KMCSimulator(structure, adj_list, initial_sites, sim_params)
 
-target_time = 10e-9  # DO NOT MODIFY - Competition constraint
+target_time = Config.SIMULATION_TIME  # Managed in kokoa/config.py
 log_interval = 2000
 
 while sim.current_time < target_time:
