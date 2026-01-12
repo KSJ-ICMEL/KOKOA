@@ -4,7 +4,7 @@ from pymatgen.core import Structure
 import os
 
 # === 1. Structure Loading ===
-cif_path = "./etz.cif"
+cif_path = "./Li4.47La3Zr2O12.cif"
 if not os.path.exists(cif_path):
     raise FileNotFoundError(f"CIF file not found: {cif_path}")
 
