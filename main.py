@@ -71,11 +71,8 @@ def main():
     
     else:
         default_goal = """
-        Objective: Optimize the ionic conductivity of a 2D lattice model representing a solid electrolyte.
-        Target: Achieve conductivity > 5.0e-3 S/cm.
-        Constraints:
-        - Use a 20x20 grid.
-        - Consider vacancy hopping mechanism.
+        Objective: Optimize the ionic conductivity of a 3D lattice model representing a solid electrolyte.
+        Target: Predict conductivity = 0.00197 mS/cm.
         """.strip()
         
         print("\n⚠️ 목표 미지정. 기본 목표 사용:")
