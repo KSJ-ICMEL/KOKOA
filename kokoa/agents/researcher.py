@@ -54,7 +54,7 @@ def researcher_node(state: AgentState) -> dict:
     
     embedding_model = HuggingFaceEmbeddings(
         model_name=Config.EMBEDDING_MODEL,
-        model_kwargs={"device": "cuda"},
+        model_kwargs={"device": Config.EMBEDDING_DEVICE},
         encode_kwargs={"normalize_embeddings": True}
     )
     

@@ -5,11 +5,25 @@ KOKOA Configuration
 import os
 
 
+def get_device():
+    """Auto-detect best available device (cuda > mps > cpu)"""
+    try:
+        import torch
+        if torch.cuda.is_available():
+            return "cuda"
+        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            return "mps"  # Apple Silicon
+    except ImportError:
+        pass
+    return "cpu"
+
+
 class Config:
     MODEL_NAME = "deepseek-r1:8b"
     TEMPERATURE = 0.1
     
     EMBEDDING_MODEL = "BAAI/bge-m3"
+    EMBEDDING_DEVICE = get_device()  # Auto-detect: cuda, mps, or cpu
     K_RETRIEVAL = 3
     
     MAX_LOOPS = 10
@@ -29,4 +43,6 @@ class Config:
         config = cls()
         config.MODEL_NAME = os.getenv("KOKOA_MODEL", config.MODEL_NAME)
         config.PERSIST_DIRECTORY = os.getenv("KOKOA_CHROMA_DIR", config.PERSIST_DIRECTORY)
+        config.EMBEDDING_DEVICE = os.getenv("KOKOA_DEVICE", config.EMBEDDING_DEVICE)
         return config
+

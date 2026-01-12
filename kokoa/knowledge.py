@@ -18,7 +18,7 @@ from kokoa.config import Config
 def get_embedding_model():
     return HuggingFaceEmbeddings(
         model_name=Config.EMBEDDING_MODEL,
-        model_kwargs={"device": "cuda"},
+        model_kwargs={"device": Config.EMBEDDING_DEVICE},
         encode_kwargs={"normalize_embeddings": True}
     )
 
