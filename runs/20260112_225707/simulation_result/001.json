@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-01-12T22:57:50.044669",
+  "iteration": 1,
+  "is_success": false,
+  "conductivity": null,
+  "conductivity_unit": "S/cm",
+  "error_message": "Runtime Error: No module named 'kokoa'\nTraceback (most recent call last):\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260112_225707\\simulation\\001.py\", line 26, in <module>\n    from kokoa.config import Config\nModuleNotFoundError: No module named 'kokoa'\n",
+  "execution_log": "[STDOUT]\n\n[STDERR]\nRuntime Error: No module named 'kokoa'\nTraceback (most recent call last):\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260112_225707\\simulation\\001.py\", line 26, in <module>\n    from kokoa.config import Config\nModuleNotFoundError: No module named 'kokoa'\n",
+  "image_path": null
+}

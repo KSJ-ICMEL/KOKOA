@@ -72,11 +72,11 @@ def main():
     else:
         default_goal = """
         Objective: Optimize the ionic conductivity of a 3D lattice model representing a solid electrolyte.
-        Target: Predict conductivity = 0.00197 mS/cm.
+        Target: Predict conductivity = 1.97e-6 S/cm.
         """.strip()
         
-        print("\n⚠️ 목표 미지정. 기본 목표 사용:")
-        print(default_goal[:100] + "...")
+        print("\n기본 목표 사용:")
+        print(default_goal)
         
         run_experiment(app, default_goal)
 

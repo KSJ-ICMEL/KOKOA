@@ -1,0 +1,1280 @@
+🚀 KOKOA 시작 (Run: 20260112_225402)
+📁 출력 디렉토리: ./runs\20260112_225402
+📝 로그 파일: ./runs\20260112_225402\output.txt
+🎯 목표: Objective: Optimize the ionic conductivity of a 3D lattice model representing a ...
+============================================================
+📊 [Analyst] 결과 분석 중...
+
+============================================================
+[Analyst] USER PROMPT:
+============================================================
+
+[Goal] Objective: Optimize the ionic conductivity of a 3D lattice model representing a solid electrolyte.
+        Target: Predict conductivity = 0.00197 mS/cm.
+[Success] True
+[Conductivity] 0.02602154912617796
+[Error Log] None
+
+[Execution Log]
+Completed 43681 steps in 10.00ns
+
+============================================================
+
+[Analyst] LLM Response (streaming):
+----------------------------------------
+{
+    "status": "RETRY",
+    "reason": "The simulation produced a conductivity of 0.026 (presumably S/cm) which is two orders of magnitude higher than the target 0.00197 mS/cm (≈1.97×10⁻⁶ S/cm). The code contains several logical and implementation errors that prevent a correct kMC run and conductivity calculation. The BKL algorithm is incomplete: events are collected but never selected, rates are not used to advance time, and particle positions are never updated. The occupancy array is indexed by Li‑site indices while the adjacency list uses full structure indices, causing mismatched indexing. The base rate calculation uses a fixed Arrhenius expression but does not account for the number of possible hops or the actual transition state energies. No mean‑squared‑displacement or Einstein relation is implemented to convert ion trajectories into conductivity. Consequently, the reported value is not physically meaningful and far from the target.",
+    "code_issues": [
+        "Incomplete BKL implementation: missing event selection, time update, and state updates.",
+        "Mismatch between occupancy array length (Li sites only) and adjacency list indices (full structure).",
+        "No handling of particle-to-site mapping after hops.",
+        "No calculation of mean‑squared displacement or conductivity from ion trajectories.",
+        "Base rate uses a single Arrhenius expression without per‑hop barriers or attempt frequencies.",
+        "Parameters (nu, E_a, T) are referenced but not defined or passed to the simulator.",
+        "Adjacency graph construction incorrectly filters Li neighbors using string containment instead of element comparison.",
+        "Potential misuse of fractional coordinates and image vectors leading to incorrect displacement vectors."
+    ],
+    "next_instruction": "1. Redesign the kMC loop: build a proper event list, sample events with probabilities proportional to rates, advance the simulation clock, and update occupancies and particle positions accordingly.\n2. Ensure that the adjacency list indices match the occupancy array indices (e.g., map Li site indices to a contiguous range).\n3. Implement a method to compute the mean‑squared displacement of Li ions over time and use the Einstein relation to obtain ionic conductivity.\n4. Define and pass all necessary parameters (attempt frequency, activation energy, temperature) to the simulator.\n5. Validate the code on a small test system where analytical or reference results are known before scaling up.\n6. Re‑run the simulation and compare the resulting conductivity to the target 0.00197 mS/cm, adjusting model parameters (e.g., activation energy, site occupancy) to approach the target."
+}
+----------------------------------------
+   ⚠️ 코드 이슈: ['Incomplete BKL implementation: missing event selection, time update, and state updates.', 'Mismatch between occupancy array length (Li sites only) and adjacency list indices (full structure).']...
+   → 평가: RETRY | The simulation produced a conductivity of 0.026 (p...
+🔄 [System] RETRY. Theorist에게 피드백 전달...
+
+📍 [Analyst] 완료
+   📊 판단: RETRY (오차율: 2502.15%)
+[Theorist] Analyzing and formulating hypotheses...
+
+============================================================
+[Theorist] USER PROMPT:
+============================================================
+
+Goal: Objective: Optimize the ionic conductivity of a 3D lattice model representing a solid electrolyte.
+        Target: Predict conductivity = 0.00197 mS/cm.
+Previous Feedback: 1. Redesign the kMC loop: build a proper event list, sample events with probabilities proportional to rates, advance the simulation clock, and update occupancies and particle positions accordingly.
+2. Ensure that the adjacency list indices match the occupancy array indices (e.g., map Li site indices to a contiguous range).
+3. Implement a method to compute the mean‑squared displacement of Li ions over time and use the Einstein relation to obtain ionic conductivity.
+4. Define and pass all necessary parameters (attempt frequency, activation energy, temperature) to the simulator.
+5. Validate the code on a small test system where analytical or reference results are known before scaling up.
+6. Re‑run the simulation and compare the resulting conductivity to the target 0.00197 mS/cm, adjusting model parameters (e.g., activation energy, site occupancy) to approach the target.
+Failed Attempts: None
+Research Attempts: 0/3
+
+[Current Simulation Code]:
+```python
+"""kMC Simulation for Li-ion Conductivity in Solid Electrolyte"""
+import numpy as np
+from pymatgen.core import Structure
+import os
+import sys
+
+# Add project root to path for config import
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from kokoa.config import Config
+
+# === 1. Structure Loading ===
+cif_path = "./Li4.47La3Zr2O12.cif"
+if not os.path.exists(cif_path):
+    raise FileNotFoundError(f"CIF file not found: {cif_path}")
+
+structure = Structure.from_file(cif_...
+```
+
+[Academic Context]:
+[Paper 1] considerations based on either electrochemical or thermodynamic
+models are limited due to missing physical, chemical, and
+electrochemical parameters. In this work, we use kinetic Monte
+Carlo (kMC) simulations with a small set of input parameters to
+model the spatial extent of the SCLs. The predictive power of the kMC model is demonstrated by ﬁnding a critical range for each
+parameter in which the space-charge layer growth is signi ﬁcant and must be considered in electrochemical and ionic devices. The
+time evolution of the charge redistribution is investigated, showing that the SCLs form within 500 ms after applying a bias potential.
+1. INTRODUCTION
+Applications of ion-conducting solids range across energy
+storage,
+1 energy conversion, 2 and ionic devices. 3 One possible
+applicati...
+
+============================================================
+
+[Theorist] LLM Response (streaming):
+----------------------------------------
+```json
+{
+    "needs_research": false,
+    "research_query": "",
+    "knowledge_gap": "",
+    "hypotheses": [
+        {
+            "rank": 1,
+            "title": "Incorporate Coulombic Interactions Between Mobile Li⁺ Ions",
+            "mechanism": "Add a pairwise electrostatic repulsion term (screened Coulomb or Ewald summation) to the site energy, so that the hopping rate depends on the local Li⁺ density and the resulting potential landscape.",
+            "expected_improvement": "More realistic diffusion pathways, suppression of unphysical clustering, and improved agreement of conductivity with experimental values.",
+            "implementation_complexity": "high"
+        },
+        {
+            "rank": 2,
+            "title": "Enforce Physical Concentration Limits (cmin, cmax) on Vacancy Occupancy",
+            "mechanism": "Introduce explicit checks during event selection to ensure that the number of Li⁺ ions per unit volume does not exceed the maximum allowed by the lattice discretization, and that vacancies are not over‑filled.",
+            "expected_improvement": "Prevents unrealistic over‑occupation of sites, stabilizes the simulation, and yields more accurate ion densities.",
+            "implementation_complexity": "low"
+        },
+        {
+            "rank": 3,
+            "title": "Add External Bias Potential to Modify Site Energies",
+            "mechanism": "Apply a uniform electric field or potential gradient across the simulation cell, shifting the activation energies for hops in the direction of the field.",
+            "expected_improvement": "Captures field‑driven drift, enabling simulation of space‑charge layer formation and capacitance effects.",
+            "implementation_complexity": "medium"
+        }
+    ],
+    "selected_hypothesis": "## Incorporate Coulombic Interactions Between Mobile Li⁺ Ions\n**Mechanism:** Add a screened Coulomb pairwise interaction term to the site energy so that the hopping rate depends on the local Li⁺ density and the resulting electrostatic potential landscape.\n**Implementation:** Modify the event rate calculation to include an additional energy contribution \(E_{\text{Coul}} = \sum_{j\neq i} \frac{q^2}{4\pi\varepsilon_0\varepsilon_r r_{ij}} e^{-\kappa r_{ij}}\) (or use Ewald summation for periodic boundaries). Update the BKL event list to recompute rates after each hop, and optionally pre‑compute a lookup table for efficiency.\n**Expected Outcome:** The simulation will exhibit realistic Li⁺ diffusion pathways, reduced artificial clustering, and a conductivity that converges more closely to the target 0.00197 mS/cm."
+}
+```
+----------------------------------------
+
+   JSON parsing failed: Invalid json output: ```json
+{
+    "needs_research": false,
+    "research_query": "",
+    "knowledge_gap": "",
+    "hypotheses": [
+        {
+            "rank": 1,
+            "title": "Incorporate Coulombic Interactions Between Mobile Li⁺ Ions",
+            "mechanism": "Add a pairwise electrostatic repulsion term (screened Coulomb or Ewald summation) to the site energy, so that the hopping rate depends on the local Li⁺ density and the resulting potential landscape.",
+            "expected_improvement": "More realistic diffusion pathways, suppression of unphysical clustering, and improved agreement of conductivity with experimental values.",
+            "implementation_complexity": "high"
+        },
+        {
+            "rank": 2,
+            "title": "Enforce Physical Concentration Limits (cmin, cmax) on Vacancy Occupancy",
+            "mechanism": "Introduce explicit checks during event selection to ensure that the number of Li⁺ ions per unit volume does not exceed the maximum allowed by the lattice discretization, and that vacancies are not over‑filled.",
+            "expected_improvement": "Prevents unrealistic over‑occupation of sites, stabilizes the simulation, and yields more accurate ion densities.",
+            "implementation_complexity": "low"
+        },
+        {
+            "rank": 3,
+            "title": "Add External Bias Potential to Modify Site Energies",
+            "mechanism": "Apply a uniform electric field or potential gradient across the simulation cell, shifting the activation energies for hops in the direction of the field.",
+            "expected_improvement": "Captures field‑driven drift, enabling simulation of space‑charge layer formation and capacitance effects.",
+            "implementation_complexity": "medium"
+        }
+    ],
+    "selected_hypothesis": "## Incorporate Coulombic Interactions Between Mobile Li⁺ Ions\n**Mechanism:** Add a screened Coulomb pairwise interaction term to the site energy so that the hopping rate depends on the local Li⁺ density and the resulting electrostatic potential landscape.\n**Implementation:** Modify the event rate calculation to include an additional energy contribution \(E_{\text{Coul}} = \sum_{j\neq i} \frac{q^2}{4\pi\varepsilon_0\varepsilon_r r_{ij}} e^{-\kappa r_{ij}}\) (or use Ewald summation for periodic boundaries). Update the BKL event list to recompute rates after each hop, and optionally pre‑compute a lookup table for efficiency.\n**Expected Outcome:** The simulation will exhibit realistic Li⁺ diffusion pathways, reduced artificial clustering, and a conductivity that converges more closely to the target 0.00197 mS/cm."
+}
+```
+For troubleshooting, visit: https://docs.langchain.com/oss/python/langchain/errors/OUTPUT_PARSING_FAILURE 
+   -> Selected: Optimize Objective: Optimize the ionic conductivity of a 3D ...
+
+📍 [Theorist] 완료
+   💡 가설: Optimize Objective: Optimize the ionic conductivity of a 3D lattice model representing a solid elect...
+🔧 [Engineer] 시뮬레이션 코드 작성 중...
+
+============================================================
+[Engineer] USER PROMPT:
+============================================================
+
+[Current Hypothesis]
+Optimize Objective: Optimize the ionic conductivity of a 3D lattice model representing a solid electrolyte.
+        Target: Predict conductivity = 0.00197 mS/cm. through parameter variation.
+
+[Existing Code]
+"""kMC Simulation for Li-ion Conductivity in Solid Electrolyte"""
+import numpy as np
+from pymatgen.core import Structure
+import os
+import sys
+
+# Add project root to path for config import
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from kokoa.config import Config
+
+# === 1. Structure Loading ===
+cif_path = "./Li4.47La3Zr2O12.cif"
+if not os.path.exists(cif_path):
+    raise FileNotFoundError(f"CIF file not found: {cif_path}")
+
+structure = Structure.from_file(cif_path)
+
+N = 4  # Supercell expansion
+structure.make_supercell([N, N, N])
+print(f"Supercell: {N}x{N}x{N}, Total atoms: {len(structure)}")
+
+# Initialize Li sites with occupancy probability
+initial_sites = []
+for site in structure:
+    if "Li" in [s.symbol for s in site.species.elements]:
+        prob =...
+
+[Last Error]
+None
+
+============================================================
+
+[Engineer] LLM Response (streaming):
+----------------------------------------
+```python
+import numpy as np
+from pymatgen.core import Structure
+import os
+import sys
+import json
+
+# Add project root to path for config import
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+try:
+    from kokoa.config import Config
+    target_time = Config.SIMULATION_TIME
+except Exception:
+    target_time = 1e-9  # 1 ns if Config missing
+
+# === 1. Structure Loading ===
+cif_path = "./Li4.47La3Zr2O12.cif"
+if not os.path.exists(cif_path):
+    raise FileNotFoundError(f"CIF file not found: {cif_path}")
+
+structure = Structure.from_file(cif_path)
+N = 4
+structure.make_supercell([N, N, N])
+
+# === 2. Build Adjacency Graph ===
+cutoff = 4.0
+neighbors_data = structure.get_all_neighbors(r=cutoff)
+adj_list = {}
+for i, site in enumerate(structure):
+    if "Li" not in site.species.elements[0].symbol:
+        continue
+    neighbors = []
+    for nb in neighbors_data[i]:
+        if "Li" in structure[nb.index].species.elements[0].symbol:
+            frac_diff = structure[nb.index].frac_coords - site.frac_coords + nb.image
+            cart_disp = structure.lattice.get_cartesian_coords(frac_diff)
+            neighbors.append((nb.index, cart_disp))
+    adj_list[i] = neighbors
+
+# === 3. kMC Simulator (BKL Algorithm) ===
+class KMCSimulator:
+    def __init__(self, structure, adj_list, initial_sites, params):
+        self.params = params
+        self.adj_list = adj_list
+        self.occupancy = np.array([s['state'] for s in initial_sites], dtype=int)
+        self.site_to_particle = {}
+        self.particle_positions = {}
+        p_id = 0
+        for idx, s in enumerate(initial_sites):
+            if s['state'] == 1:
+                start = structure.lattice.get_cartesian_coords(s['coords'])
+                self.site_to_particle[idx] = p_id
+                self.particle_positions[p_id] = {'start': np.array(start), 'current': np.array(start)}
+                p_id += 1
+        self.li_indices = set(self.site_to_particle.keys())
+        self.num_particles = len(self.li_indices)
+        self.current_time = 0.0
+        self.step_count = 0
+        kb = 8.617e-5
+        self.base_rate = params['nu'] * np.exp(-params['E_a'] / (kb * params['T']))
+
+    def run_step(self):
+        events, rates, total = [], [], 0.0
+        for src in self.li_indices:
+            for tgt, vec in self.adj_list.get(src, []):
+                if self.occupancy[tgt] == 0:
+                    total += self.base_rate
+                    events.append((src, tgt, vec))
+                    rates.append(total)
+        if total == 0:
+            return False
+        self.current_time += -np.log(np.random.rand()) / total
+        self.step_count += 1
+        idx = np.searchsorted(rates, np.random.uniform(0, total))
+        src, tgt, vec = events[idx]
+        p_id = self.site_to_particle.pop(src)
+        self.particle_positions[p_id]['current'] += vec
+        self.occupancy[src], self.occupancy[tgt] = 0, 1
+        self.site_to_particle[tgt] = p_id
+        self.li_indices.discard(src)
+        self.li_indices.add(tgt)
+        return True
+
+    def calculate_properties(self):
+        if self.current_time == 0:
+            return 0, 0
+        msd = np.mean([np.sum((p['current'] - p['start'])**2) for p in self.particle_positions.values()])
+        D = msd / (6 * self.current_time) * 1e-16
+        n = self.num_particles / (self.params['volume'] * 1e-24)
+        sigma = (n * (1.602e-19)**2 * D) / (1.38e-23 * self.params['T'])
+        return msd, sigma
+
+# === 4. Run Simulation ===
+sim_params = {'T': 400, 'E_a': 0.18, 'nu': 5e13, 'volume': structure.volume}
+initial_sites = []
+for site in structure:
+    if "Li" in [s.symbol for s in site.species.elements]:
+        prob = site.species.get("Li", 0)
+        state = 1 if np.random.rand() < prob else 0
+        initial_sites.append({"coords": site.frac_coords, "state": state})
+
+sim = KMCSimulator(structure, adj_list, initial_sites, sim_params)
+log_interval = 1000
+
+while sim.current_time < target_time:
+    if not sim.run_step():
+        break
+    if sim.step_count % log_interval == 0:
+        msd, sigma = sim.calculate_properties()
+        print(f"Step {sim.step_count}: {sim.current_time*1e9:.2f}ns, MSD={msd:.2f}A^2, sigma={sigma*1e3:.4f}mS/cm")
+
+msd, sigma = sim.calculate_properties()
+D = msd / (6 * sim.current_time) * 1e-16 if sim.current_time > 0 else 0
+
+print(f"\n=== Simulation Complete ===")
+print(f"T={sim_params['T']}K, Time={sim.current_time*1e9:.2f}ns")
+print(f"D={D:.4e} cm^2/s")
+print(f"Conductivity: {sigma:.4e} S/cm")
+
+# Save result to JSON
+result = {
+    "is_success": True,
+    "conductivity": sigma,
+    "diffusivity": D,
+    "msd": msd,
+    "simulation_time_ns": sim.current_time * 1e9,
+    "temperature_K": sim_params['T'],
+    "steps": sim.step_count,
+    "error_message": None,
+    "execution_log": f"Completed {sim.step_count} steps in {sim.current_time*1e9:.2f}ns"
+}
+result_path = os.path.join(os.path.dirname(__file__), "initial_state.json")
+with open(result_path, 'w', encoding='utf-8') as f:
+    json.dump(result, f, indent=2)
+```
+----------------------------------------
+   → 코드 작성 완료 (5015 bytes)
+
+📍 [Engineer] 완료
+   💾 코드: 5015 bytes
+[Simulator] Running simulation...
+   Code saved: simulation/001.py
+   Result saved: simulation_result/001.json
+   -> Simulator: Failed. Error = C:\Users\owner\anaconda3\envs\kok...
+
+📍 [Simulator] 완료
+   🧪 결과: Success=False, Cond=None
+📊 [Analyst] 결과 분석 중...
+
+============================================================
+[Analyst] USER PROMPT:
+============================================================
+
+[Goal] Objective: Optimize the ionic conductivity of a 3D lattice model representing a solid electrolyte.
+        Target: Predict conductivity = 0.00197 mS/cm.
+[Success] False
+[Conductivity] N/A
+[Error Log] C:\Users\owner\anaconda3\envs\kokoa\python.exe: can't open file 'C:\\Users\\sjkim\\KOKOA\\runs\\20260112_225402\\runs\\20260112_225402\\simulation\\001.py': [Errno 2] No such file or directory
+
+
+[Execution Log]
+[STDOUT]
+
+[STDERR]
+C:\Users\owner\anaconda3\envs\kokoa\python.exe: can't open file 'C:\\Users\\sjkim\\KOKOA\\runs\\20260112_225402\\runs\\20260112_225402\\simulation\\001.py': [Errno 2] No such file or directory
+
+
+============================================================
+
+[Analyst] LLM Response (streaming):
+----------------------------------------
+{
+    "status": "RETRY",
+    "reason": "The simulation failed because the Python script could not be located and the provided code contains several critical syntax and logic errors that prevent it from running or producing a conductivity value. The error log indicates a missing file path, while the code snippet ends abruptly with an undefined token 'sel' and lacks essential components such as the definition of `initial_sites`, a main execution loop, and a conductivity calculation. Additionally, the adjacency construction and occupancy handling are incomplete and likely incorrect for a kinetic Monte‑Carlo simulation of Li ion transport.",
+    "code_issues": [
+        "File path error: the script is invoked from a non‑existent location.",
+        "Syntax error: the line `sel` is incomplete and causes a SyntaxError.",
+        "Missing definition of `initial_sites` before it is used to initialize occupancy.",
+        "No main loop to advance the simulation or collect statistics.",
+        "No calculation of mean‑squared displacement or conductivity from the trajectory.",
+        "Adjacency list construction may include non‑Li neighbors incorrectly; the logic for filtering Li sites is fragile.",
+        "Base rate calculation uses `params` that may not be provided or may contain incorrect keys.",
+        "Occupancy array length may not match the number of sites due to filtering of non‑Li sites.",
+        "The class is not closed properly; indentation and method definitions are incomplete."
+    ],
+    "next_instruction": "Re‑implement the simulation script from scratch: (1) ensure the script is located in the correct directory and invoked correctly; (2) define `initial_sites` by selecting all Li sites and marking them as occupied or vacant; (3) complete the `KMCSimulator` class with proper initialization, event selection, and time advancement; (4) add a main loop that runs until a target simulation time or number of steps is reached; (5) compute the mean‑squared displacement of Li ions and convert it to ionic conductivity using the Nernst–Einstein relation; (6) validate the code with a small test system before scaling up; (7) document all assumptions and parameter choices (e.g., attempt frequency, activation energy, temperature)."
+}
+----------------------------------------
+   ⚠️ 코드 이슈: ['File path error: the script is invoked from a non‑existent location.', 'Syntax error: the line `sel` is incomplete and causes a SyntaxError.']...
+   → 평가: RETRY | The simulation failed because the Python script co...
+🔄 [System] RETRY. Theorist에게 피드백 전달...
+
+📍 [Analyst] 완료
+   📊 판단: RETRY (오차율: 100.00%)
+[Theorist] Analyzing and formulating hypotheses...
+
+============================================================
+[Theorist] USER PROMPT:
+============================================================
+
+Goal: Objective: Optimize the ionic conductivity of a 3D lattice model representing a solid electrolyte.
+        Target: Predict conductivity = 0.00197 mS/cm.
+Previous Feedback: Re‑implement the simulation script from scratch: (1) ensure the script is located in the correct directory and invoked correctly; (2) define `initial_sites` by selecting all Li sites and marking them as occupied or vacant; (3) complete the `KMCSimulator` class with proper initialization, event selection, and time advancement; (4) add a main loop that runs until a target simulation time or number of steps is reached; (5) compute the mean‑squared displacement of Li ions and convert it to ionic conductivity using the Nernst–Einstein relation; (6) validate the code with a small test system before scaling up; (7) document all assumptions and parameter choices (e.g., attempt frequency, activation energy, temperature).
+Failed Attempts: None
+Research Attempts: 0/3
+
+[Current Simulation Code]:
+```python
+import numpy as np
+from pymatgen.core import Structure
+import os
+import sys
+import json
+
+# Add project root to path for config import
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+try:
+    from kokoa.config import Config
+    target_time = Config.SIMULATION_TIME
+except Exception:
+    target_time = 1e-9  # 1 ns if Config missing
+
+# === 1. Structure Loading ===
+cif_path = "./Li4.47La3Zr2O12.cif"
+if not os.path.exists(cif_path):
+    raise FileNotFoundError(f"CIF fil...
+```
+
+[Academic Context]:
+[Paper 1] considerations based on either electrochemical or thermodynamic
+models are limited due to missing physical, chemical, and
+electrochemical parameters. In this work, we use kinetic Monte
+Carlo (kMC) simulations with a small set of input parameters to
+model the spatial extent of the SCLs. The predictive power of the kMC model is demonstrated by ﬁnding a critical range for each
+parameter in which the space-charge layer growth is signi ﬁcant and must be considered in electrochemical and ionic devices. The
+time evolution of the charge redistribution is investigated, showing that the SCLs form within 500 ms after applying a bias potential.
+1. INTRODUCTION
+Applications of ion-conducting solids range across energy
+storage,
+1 energy conversion, 2 and ionic devices. 3 One possible
+applicati...
+
+============================================================
+
+[Theorist] LLM Response (streaming):
+----------------------------------------
+```json
+{
+    "needs_research": false,
+    "research_query": "",
+    "knowledge_gap": "",
+    "hypotheses": [
+        {
+            "rank": 1,
+            "title": "Introduce Arrhenius‑based hop rates with site‑specific activation energies",
+            "mechanism": "Each Li hop is assigned a rate k = ν * exp(-E_a / k_B T), where ν is an attempt frequency (≈10¹³ s⁻¹) and E_a is the migration barrier specific to the initial and final sites (obtained from literature or DFT). This replaces the current uniform rate assumption and captures the strong temperature and local‑environment dependence of Li mobility.",
+            "expected_improvement": "Drastically improves realism of ionic conductivity predictions, enabling quantitative comparison with experimental values (e.g., 0.00197 mS cm⁻¹). It also allows systematic study of how different migration pathways contribute to overall transport.",
+            "implementation_complexity": "medium"
+        },
+        {
+            "rank": 2,
+            "title": "Add Coulombic interaction corrections to hop rates",
+            "mechanism": "Modify the Arrhenius rate by a factor exp(-ΔU / k_B T), where ΔU is the change in electrostatic energy due to moving a Li ion between sites, computed from a mean‑field or pairwise Coulomb model. This captures concentration‑dependent blocking and screening effects.",
+            "expected_improvement": "Captures the effect of Li‑Li repulsion on mobility, especially at high concentrations, leading to more accurate conductivity and SCL thickness predictions.",
+            "implementation_complexity": "medium"
+        },
+        {
+            "rank": 3,
+            "title": "Enforce explicit vacancy concentration limits (c_min, c_max)",
+            "mechanism": "Define a maximum Li density c_max based on the inverse unit‑cell volume and enforce that no site can be occupied by more than one Li ion. Introduce a vacancy lattice if needed to model c_min = 0.",
+            "expected_improvement": "Prevents unphysical over‑occupation of sites and ensures realistic Li density, which indirectly affects hop rates and conductivity.",
+            "implementation_complexity": "low"
+        }
+    ],
+    "selected_hypothesis": "## Introduce Arrhenius‑based hop rates with site‑specific activation energies\n**Mechanism:** Assign each Li hop a rate k = ν * exp(-E_a / k_B T), where ν ≈ 10¹³ s⁻¹ and E_a is the migration barrier for that specific hop (from literature or DFT). This replaces the uniform rate assumption and captures temperature and local‑environment dependence.\n**Implementation:** Add an `E_a` field to the adjacency list entries, compute rates on the fly in the event selection step, and use them in the BKL algorithm.\n**Expected Outcome:** Significantly more realistic ionic conductivity predictions, enabling quantitative agreement with the target 0.00197 mS cm⁻¹ and providing a solid foundation for further refinements such as Coulombic interactions."
+}
+```
+----------------------------------------
+   -> Generated 3 hypotheses:
+      #1: Introduce Arrhenius‑based hop rates with...
+      #2: Add Coulombic interaction corrections to...
+      #3: Enforce explicit vacancy concentration l...
+   -> Selected: ## Introduce Arrhenius‑based hop rates with site‑specific ac...
+
+📍 [Theorist] 완료
+   💡 가설: ## Introduce Arrhenius‑based hop rates with site‑specific activation energies
+**Mechanism:** Assign ...
+🔧 [Engineer] 시뮬레이션 코드 작성 중...
+
+============================================================
+[Engineer] USER PROMPT:
+============================================================
+
+[Current Hypothesis]
+## Introduce Arrhenius‑based hop rates with site‑specific activation energies
+**Mechanism:** Assign each Li hop a rate k = ν * exp(-E_a / k_B T), where ν ≈ 10¹³ s⁻¹ and E_a is the migration barrier for that specific hop (from literature or DFT). This replaces the uniform rate assumption and captures temperature and local‑environment dependence.
+**Implementation:** Add an `E_a` field to the adjacency list entries, compute rates on the fly in the event selection step, and use them in the BKL algorithm.
+**Expected Outcome:** Significantly more realistic ionic conductivity predictions, enabling quantitative agreement with the target 0.00197 mS cm⁻¹ and providing a solid foundation for further refinements such as Coulombic interactions.
+
+[Existing Code]
+import numpy as np
+from pymatgen.core import Structure
+import os
+import sys
+import json
+
+# Add project root to path for config import
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+try:
+    from kokoa.config import Config
+    target_time = Config.SIMULATION_TIME
+except Exception:
+    target_time = 1e-9  # 1 ns if Config missing
+
+# === 1. Structure Loading ===
+cif_path = "./Li4.47La3Zr2O12.cif"
+if not os.path.exists(cif_path):
+    raise FileNotFoundError(f"CIF file not found: {cif_path}")
+
+structure = Structure.from_file(cif_path)
+N = 4
+structure.make_supercell([N, N, N])
+
+# === 2. Build Adjacency Graph ===
+cutoff = 4.0
+neighbors_data = structure.get_all_neighbors(r=cutoff)
+adj_list = {}
+for i, site in enumerate(structure):
+    if "Li" not in site.species.el...
+
+[Last Error]
+C:\Users\owner\anaconda3\envs\kokoa\python.exe: can't open file 'C:\\Users\\sjkim\\KOKOA\\runs\\20260112_225402\\runs\\20260112_225402\\simulation\\001.py': [Errno 2] No such file or directory
+
+
+============================================================
+
+[Engineer] LLM Response (streaming):
+----------------------------------------
+```python
+import numpy as np
+from pymatgen.core import Structure
+import os, sys, json
+
+# keep simulation time fixed
+try:
+    from kokoa.config import Config
+    target_time = Config.SIMULATION_TIME
+except Exception:
+    target_time = 1e-9
+
+# === 1. Load structure ===
+cif_path = "./Li4.47La3Zr2O12.cif"
+if not os.path.exists(cif_path):
+    raise FileNotFoundError(f"CIF file not found: {cif_path}")
+structure = Structure.from_file(cif_path)
+N = 4
+structure.make_supercell([N, N, N])
+
+# === 2. Build adjacency with site‑specific E_a ===
+cutoff = 4.0
+nbrs = structure.get_all_neighbors(r=cutoff)
+adj = {}
+for i, site in enumerate(structure):
+    if "Li" not in site.species.elements[0].symbol:
+        continue
+    lst = []
+    for nb in nbrs[i]:
+        if "Li" in structure[nb.index].species.elements[0].symbol:
+            frac_diff = structure[nb.index].frac_coords - site.frac_coords + nb.image
+            disp = structure.lattice.get_cartesian_coords(frac_diff)
+            dist = np.linalg.norm(disp)
+            Ea = 0.18 + 0.01 * dist  # eV, simple model
+            lst.append((nb.index, disp, Ea))
+    adj[i] = lst
+
+# === 3. kMC simulator ===
+class KMCSimulator:
+    kb = 8.617e-5  # eV/K
+    def __init__(self, struct, adj, init_sites, params):
+        self.struct = struct
+        self.adj = adj
+        self.params = params
+        self.nsites = len(struct)
+        self.occ = np.zeros(self.nsites, dtype=int)
+        self.site_to_p = {}
+        self.p_pos = {}
+        pid = 0
+        for s in init_sites:
+            idx = s["idx"]
+            if s["state"]:
+                self.occ[idx] = 1
+                pos = struct.lattice.get_cartesian_coords(s["coords"])
+                self.site_to_p[idx] = pid
+                self.p_pos[pid] = {"start": pos.copy(), "cur": pos.copy()}
+                pid += 1
+        self.li_idx = {i for i in self.site_to_p}
+        self.np = pid
+        self.t = 0.0
+        self.steps = 0
+
+    def run_step(self):
+        events = []
+        cum = []
+        total = 0.0
+        nu = self.params["nu"]
+        T = self.params["T"]
+        for src in self.li_idx:
+            for tgt, disp, Ea in self.adj.get(src, []):
+                if self.occ[tgt] == 0:
+                    rate = nu * np.exp(-Ea / (self.kb * T))
+                    total += rate
+                    events.append((src, tgt, disp))
+                    cum.append(total)
+        if total == 0:
+            return False
+        self.t += -np.log(np.random.rand()) / total
+        self.steps += 1
+        r = np.random.uniform(0, total)
+        idx = np.searchsorted(cum, r)
+        src, tgt, disp = events[idx]
+        pid = self.site_to_p.pop(src)
+        self.p_pos[pid]["cur"] += disp
+        self.occ[src], self.occ[tgt] = 0, 1
+        self.site_to_p[tgt] = pid
+        self.li_idx.discard(src)
+        self.li_idx.add(tgt)
+        return True
+
+    def properties(self):
+        if self.t == 0:
+            return 0.0, 0.0
+        msd = np.mean([np.sum((p["cur"] - p["start"])**2) for p in self.p_pos.values()])
+        D = msd / (6 * self.t) * 1e-16  # cm^2/s
+        n = self.np / (self.params["vol"] * 1e-24)  # cm^-3
+        sigma = n * (1.602e-19)**2 * D / (1.38e-23 * self.params["T"])
+        return msd, sigma
+
+# === 4. Prepare initial sites ===
+init_sites = []
+for i, site in enumerate(structure):
+    if "Li" in site.species.elements[0].symbol:
+        prob = site.species.get("Li", 0)
+        state = 1 if np.random.rand() < prob else 0
+        init_sites.append({"idx": i, "coords": site.frac_coords, "state": state})
+
+# === 5. Run simulation ===
+params = {"T": 400, "nu": 5e13, "vol": structure.volume}
+sim = KMCSimulator(structure, adj, init_sites, params)
+
+while sim.t < target_time:
+    if not sim.run_step():
+        break
+
+msd, sigma = sim.properties()
+D = msd / (6 * sim.t) * 1e-16 if sim.t > 0 else 0
+
+print(f"\n=== Simulation Complete ===")
+print(f"T={params['T']}K, Time={sim.t*1e9:.2f}ns")
+print(f"D={D:.4e} cm^2/s")
+print(f"Conductivity: {sigma:.4e} S/cm")
+
+# === 6. Save results ===
+res = {
+    "is_success": True,
+    "conductivity": sigma,
+    "diffusivity": D,
+    "msd": msd,
+    "simulation_time_ns": sim.t * 1e9,
+    "temperature_K": params["T"],
+    "steps": sim.steps,
+    "error_message": None,
+    "execution_log": f"Completed {sim.steps} steps in {sim.t*1e9:.2f}ns"
+}
+out_path = os.path.join(os.path.dirname(__file__), "initial_state.json")
+with open(out_path, "w", encoding="utf-8") as f:
+    json.dump(res, f, indent=2)
+```
+----------------------------------------
+   → 코드 작성 완료 (4469 bytes)
+
+📍 [Engineer] 완료
+   💾 코드: 4469 bytes
+[Simulator] Running simulation...
+   Code saved: simulation/002.py
+   Result saved: simulation_result/002.json
+   -> Simulator: Failed. Error = C:\Users\owner\anaconda3\envs\kok...
+
+📍 [Simulator] 완료
+   🧪 결과: Success=False, Cond=None
+📊 [Analyst] 결과 분석 중...
+
+============================================================
+[Analyst] USER PROMPT:
+============================================================
+
+[Goal] Objective: Optimize the ionic conductivity of a 3D lattice model representing a solid electrolyte.
+        Target: Predict conductivity = 0.00197 mS/cm.
+[Success] False
+[Conductivity] N/A
+[Error Log] C:\Users\owner\anaconda3\envs\kokoa\python.exe: can't open file 'C:\\Users\\sjkim\\KOKOA\\runs\\20260112_225402\\runs\\20260112_225402\\simulation\\002.py': [Errno 2] No such file or directory
+
+
+[Execution Log]
+[STDOUT]
+
+[STDERR]
+C:\Users\owner\anaconda3\envs\kokoa\python.exe: can't open file 'C:\\Users\\sjkim\\KOKOA\\runs\\20260112_225402\\runs\\20260112_225402\\simulation\\002.py': [Errno 2] No such file or directory
+
+
+============================================================
+
+[Analyst] LLM Response (streaming):
+----------------------------------------
+{
+    "status": "RETRY",
+    "reason": "The simulation script could not be executed because the file path specified in the execution log does not exist and the provided code snippet contains multiple syntax and structural errors that prevent it from running. The code is incomplete (the `properties` method is truncated), contains invalid syntax (`for p i`), and lacks necessary imports and parameter definitions. Additionally, the script path used by the runner appears to be duplicated, indicating a misconfiguration in the job submission system. These issues must be resolved before any meaningful simulation can be performed.",
+    "code_issues": [
+        "Missing or incorrect file path: the runner attempts to open '...\\runs\\20260112_225402\\runs\\20260112_225402\\simulation\\002.py', which does not exist.",
+        "Incomplete `properties` method: the list comprehension is cut off and the method never returns a value.",
+        "Syntax error: `for p i` is not valid Python syntax.",
+        "Missing imports for `np` and `Structure` usage in the `properties` method.",
+        "Undefined variables: `self.params` is used but never populated in the snippet; `nu` and `T` must be passed.",
+        "Potential logic issue: `self.site_to_p.pop(src)` assumes `src` is always in the dictionary; if a site becomes empty due to a bug it could raise a KeyError.",
+        "The script does not handle the case where `total` is zero after the event loop, though it returns False; this may prematurely terminate the simulation.",
+        "The simulation time is hard‑coded to 1e-9 s if `Config.SIMULATION_TIME` is missing, which is likely too short for meaningful diffusion statistics.",
+        "The adjacency construction uses a fixed cutoff of 4.0 Å but does not filter out non‑Li neighbors beyond the first shell, potentially over‑counting events.",
+        "The activation energy model `Ea = 0.18 + 0.01 * dist` is overly simplistic and may not capture the true physics of Li diffusion in LLZO."
+    ],
+    "next_instruction": "1. Correct the file path in the job submission script or ensure the simulation script is located at the expected path. 2. Complete the `properties` method: compute the mean‑squared displacement from `self.p_pos` and return it along with the total simulation time. 3. Fix the syntax error (`for p i`) and ensure all imports are present. 4. Pass a proper `params` dictionary to `KMCSimulator` containing `nu` (attempt frequency) and `T` (temperature). 5. Consider increasing the simulation time or running multiple independent kMC trajectories to obtain statistically robust conductivity estimates. 6. Review the activation energy model and, if possible, replace it with a more realistic potential energy surface derived from DFT or experimental data. 7. After these fixes, rerun the simulation and compare the computed conductivity to the target value of 0.00197 mS/cm."
+}
+----------------------------------------
+   ⚠️ 코드 이슈: ["Missing or incorrect file path: the runner attempts to open '...\\runs\\20260112_225402\\runs\\20260112_225402\\simulation\\002.py', which does not exist.", 'Incomplete `properties` method: the list comprehension is cut off and the method never returns a value.']...
+   → 평가: RETRY | The simulation script could not be executed becaus...
+🔄 [System] RETRY. Theorist에게 피드백 전달...
+
+📍 [Analyst] 완료
+   📊 판단: RETRY (오차율: 100.00%)
+[Theorist] Analyzing and formulating hypotheses...
+
+============================================================
+[Theorist] USER PROMPT:
+============================================================
+
+Goal: Objective: Optimize the ionic conductivity of a 3D lattice model representing a solid electrolyte.
+        Target: Predict conductivity = 0.00197 mS/cm.
+Previous Feedback: 1. Correct the file path in the job submission script or ensure the simulation script is located at the expected path. 2. Complete the `properties` method: compute the mean‑squared displacement from `self.p_pos` and return it along with the total simulation time. 3. Fix the syntax error (`for p i`) and ensure all imports are present. 4. Pass a proper `params` dictionary to `KMCSimulator` containing `nu` (attempt frequency) and `T` (temperature). 5. Consider increasing the simulation time or running multiple independent kMC trajectories to obtain statistically robust conductivity estimates. 6. Review the activation energy model and, if possible, replace it with a more realistic potential energy surface derived from DFT or experimental data. 7. After these fixes, rerun the simulation and compare the computed conductivity to the target value of 0.00197 mS/cm.
+Failed Attempts: None
+Research Attempts: 0/3
+
+[Current Simulation Code]:
+```python
+import numpy as np
+from pymatgen.core import Structure
+import os, sys, json
+
+# keep simulation time fixed
+try:
+    from kokoa.config import Config
+    target_time = Config.SIMULATION_TIME
+except Exception:
+    target_time = 1e-9
+
+# === 1. Load structure ===
+cif_path = "./Li4.47La3Zr2O12.cif"
+if not os.path.exists(cif_path):
+    raise FileNotFoundError(f"CIF file not found: {cif_path}")
+structure = Structure.from_file(cif_path)
+N = 4
+structure.make_supercell([N, N, N])
+
+# === 2. Build adjacency w...
+```
+
+[Academic Context]:
+[Paper 1] considerations based on either electrochemical or thermodynamic
+models are limited due to missing physical, chemical, and
+electrochemical parameters. In this work, we use kinetic Monte
+Carlo (kMC) simulations with a small set of input parameters to
+model the spatial extent of the SCLs. The predictive power of the kMC model is demonstrated by ﬁnding a critical range for each
+parameter in which the space-charge layer growth is signi ﬁcant and must be considered in electrochemical and ionic devices. The
+time evolution of the charge redistribution is investigated, showing that the SCLs form within 500 ms after applying a bias potential.
+1. INTRODUCTION
+Applications of ion-conducting solids range across energy
+storage,
+1 energy conversion, 2 and ionic devices. 3 One possible
+applicati...
+
+============================================================
+
+[Theorist] LLM Response (streaming):
+----------------------------------------
+```json
+{
+    "needs_research": false,
+    "research_query": "",
+    "knowledge_gap": "",
+    "hypotheses": [
+        {
+            "rank": 1,
+            "title": "Add Coulombic Repulsion Between Mobile Li Ions",
+            "mechanism": "Introduce a pairwise electrostatic interaction term that modifies the transition rates based on the local Li density. The hopping rate for a jump from site i to j becomes k_ij = ν exp[-(E_a + ΔE_C)/k_B T], where ΔE_C = Σ_{k≠i,j} (q^2 / (4πϵ_0 ϵ_r r_{ik})) accounts for repulsion from other Li ions.",
+            "expected_improvement": "Reduces unphysical clustering of Li ions, yields a more realistic temperature dependence of conductivity, and captures the slowdown of diffusion in high‑density regions.",
+            "implementation_complexity": "medium"
+        },
+        {
+            "rank": 2,
+            "title": "Replace Distance‑Based Ea with DFT‑Derived Activation Energies",
+            "mechanism": "Use a lookup table of activation energies for each distinct Li–Li jump pathway obtained from DFT calculations for the garnet lattice.",
+            "expected_improvement": "Provides accurate hopping barriers, leading to a conductivity prediction closer to experimental values.",
+            "implementation_complexity": "high"
+        },
+        {
+            "rank": 3,
+            "title": "Enforce Concentration Limits and Occupancy Constraints",
+            "mechanism": "Implement c_min = 0 and c_max = 1/(a_x a_y a_z) to restrict the maximum Li density and ensure only one Li per site.",
+            "expected_improvement": "Prevents unrealistic Li concentrations and improves the physical realism of the simulation.",
+            "implementation_complexity": "low"
+        }
+    ],
+    "selected_hypothesis": "## Add Coulombic Repulsion Between Mobile Li Ions\n**Mechanism:** Add a pairwise electrostatic interaction term ΔE_C that modifies the transition rates: k_ij = ν exp[-(E_a + ΔE_C)/k_B T]. ΔE_C is computed as the sum over all other Li ions of q^2/(4πϵ_0 ϵ_r r). This captures repulsion in crowded regions.\n**Implementation:**\n1. In the KMCSimulator, store positions of all Li ions.\n2. Before each event selection, compute ΔE_C for each possible jump by summing Coulombic contributions from other Li ions.\n3. Adjust the rate for that jump by multiplying by exp(-ΔE_C/(k_B T)).\n4. Update positions after each accepted jump.\n**Expected Outcome:** The simulation will exhibit reduced hopping rates in high‑density areas, leading to a more realistic ionic conductivity that better matches the target 0.00197 mS/cm."
+}
+```
+----------------------------------------
+   -> Generated 3 hypotheses:
+      #1: Add Coulombic Repulsion Between Mobile L...
+      #2: Replace Distance‑Based Ea with DFT‑Deriv...
+      #3: Enforce Concentration Limits and Occupan...
+   -> Selected: ## Add Coulombic Repulsion Between Mobile Li Ions...
+
+📍 [Theorist] 완료
+   💡 가설: ## Add Coulombic Repulsion Between Mobile Li Ions
+**Mechanism:** Add a pairwise electrostatic intera...
+🔧 [Engineer] 시뮬레이션 코드 작성 중...
+
+============================================================
+[Engineer] USER PROMPT:
+============================================================
+
+[Current Hypothesis]
+## Add Coulombic Repulsion Between Mobile Li Ions
+**Mechanism:** Add a pairwise electrostatic interaction term ΔE_C that modifies the transition rates: k_ij = ν exp[-(E_a + ΔE_C)/k_B T]. ΔE_C is computed as the sum over all other Li ions of q^2/(4πϵ_0 ϵ_r r). This captures repulsion in crowded regions.
+**Implementation:**
+1. In the KMCSimulator, store positions of all Li ions.
+2. Before each event selection, compute ΔE_C for each possible jump by summing Coulombic contributions from other Li ions.
+3. Adjust the rate for that jump by multiplying by exp(-ΔE_C/(k_B T)).
+4. Update positions after each accepted jump.
+**Expected Outcome:** The simulation will exhibit reduced hopping rates in high‑density areas, leading to a more realistic ionic conductivity that better matches the target 0.00197 mS/cm.
+
+[Existing Code]
+import numpy as np
+from pymatgen.core import Structure
+import os, sys, json
+
+# keep simulation time fixed
+try:
+    from kokoa.config import Config
+    target_time = Config.SIMULATION_TIME
+except Exception:
+    target_time = 1e-9
+
+# === 1. Load structure ===
+cif_path = "./Li4.47La3Zr2O12.cif"
+if not os.path.exists(cif_path):
+    raise FileNotFoundError(f"CIF file not found: {cif_path}")
+structure = Structure.from_file(cif_path)
+N = 4
+structure.make_supercell([N, N, N])
+
+# === 2. Build adjacency with site‑specific E_a ===
+cutoff = 4.0
+nbrs = structure.get_all_neighbors(r=cutoff)
+adj = {}
+for i, site in enumerate(structure):
+    if "Li" not in site.species.elements[0].symbol:
+        continue
+    lst = []
+    for nb in nbrs[i]:
+        if "Li" in structure[nb.index].species.elements[0].symbol...
+
+[Last Error]
+C:\Users\owner\anaconda3\envs\kokoa\python.exe: can't open file 'C:\\Users\\sjkim\\KOKOA\\runs\\20260112_225402\\runs\\20260112_225402\\simulation\\002.py': [Errno 2] No such file or directory
+
+
+============================================================
+
+[Engineer] LLM Response (streaming):
+----------------------------------------
+```python
+import numpy as np
+from pymatgen.core import Structure
+import os, sys, json
+
+# keep simulation time fixed
+try:
+    from kokoa.config import Config
+    target_time = Config.SIMULATION_TIME
+except Exception:
+    target_time = 1e-9
+
+# === 1. Load structure ===
+cif_path = "./Li4.47La3Zr2O12.cif"
+if not os.path.exists(cif_path):
+    raise FileNotFoundError(f"CIF file not found: {cif_path}")
+structure = Structure.from_file(cif_path)
+N = 4
+structure.make_supercell([N, N, N])
+
+# === 2. Build adjacency with site‑specific E_a ===
+cutoff = 4.0
+nbrs = structure.get_all_neighbors(r=cutoff)
+adj = {}
+for i, site in enumerate(structure):
+    if "Li" not in site.species.elements[0].symbol:
+        continue
+    lst = []
+    for nb in nbrs[i]:
+        if "Li" in structure[nb.index].species.elements[0].symbol:
+            frac_diff = structure[nb.index].frac_coords - site.frac_coords + nb.image
+            disp = structure.lattice.get_cartesian_coords(frac_diff)
+            dist = np.linalg.norm(disp)
+            Ea = 0.18 + 0.01 * dist  # eV
+            lst.append((nb.index, disp, Ea))
+    adj[i] = lst
+
+# === 3. kMC simulator ===
+class KMCSimulator:
+    kb = 8.617e-5  # eV/K
+    eps0 = 8.854e-12
+    epsr = 10.0
+    q = 1.602e-19
+
+    def __init__(self, struct, adj, init_sites, params):
+        self.struct = struct
+        self.adj = adj
+        self.params = params
+        self.nsites = len(struct)
+        self.occ = np.zeros(self.nsites, dtype=int)
+        self.site_to_p = {}
+        self.p_pos = {}
+        pid = 0
+        for s in init_sites:
+            idx = s["idx"]
+            if s["state"]:
+                self.occ[idx] = 1
+                pos = struct.lattice.get_cartesian_coords(s["coords"])
+                self.site_to_p[idx] = pid
+                self.p_pos[pid] = {"start": pos.copy(), "cur": pos.copy()}
+                pid += 1
+        self.li_idx = {i for i in self.site_to_p}
+        self.np = pid
+        self.t = 0.0
+        self.steps = 0
+
+    def _coulomb(self, src_idx, new_pos):
+        pos_frac = self.struct.lattice.get_fractional_coords(new_pos)
+        energy = 0.0
+        for pid, pos in self.p_pos.items():
+            if self.site_to_p.get(src_idx) == pid:
+                continue
+            other_frac = self.struct.lattice.get_fractional_coords(pos["cur"])
+            diff = other_frac - pos_frac
+            diff -= np.round(diff)
+            dist = np.linalg.norm(self.struct.lattice.get_cartesian_coords(diff))
+            if dist > 0:
+                energy += self.q**2/(4*np.pi*self.eps0*self.epsr*dist)
+        return energy / self.q  # eV (since q in C, energy in J, divide by eV)
+
+    def run_step(self):
+        events = []
+        cum = []
+        total = 0.0
+        nu = self.params["nu"]
+        T = self.params["T"]
+        for src in self.li_idx:
+            pid = self.site_to_p[src]
+            cur_pos = self.p_pos[pid]["cur"]
+            for tgt, disp, Ea in self.adj.get(src, []):
+                if self.occ[tgt] == 0:
+                    new_pos = cur_pos + disp
+                    dE = self._coulomb(src, new_pos)
+                    rate = nu * np.exp(-(Ea + dE) / (self.kb * T))
+                    total += rate
+                    events.append((src, tgt, disp))
+                    cum.append(total)
+        if total == 0:
+            return False
+        self.t += -np.log(np.random.rand()) / total
+        self.steps += 1
+        r = np.random.uniform(0, total)
+        idx = np.searchsorted(cum, r)
+        src, tgt, disp = events[idx]
+        pid = self.site_to_p.pop(src)
+        self.p_pos[pid]["cur"] += disp
+        self.occ[src], self.occ[tgt] = 0, 1
+        self.site_to_p[tgt] = pid
+        self.li_idx.discard(src)
+        self.li_idx.add(tgt)
+        return True
+
+    def properties(self):
+        if self.t == 0:
+            return 0.0, 0.0
+        msd = np.mean([np.sum((p["cur"] - p["start"])**2) for p in self.p_pos.values()])
+        D = msd / (6 * self.t) * 1e-16  # cm^2/s
+        n = self.np / (self.params["vol"] * 1e-24)  # cm^-3
+        sigma = n * (1.602e-19)**2 * D / (1.38e-23 * self.params["T"])
+        return msd, sigma
+
+# === 4. Prepare initial sites ===
+init_sites = []
+for i, site in enumerate(structure):
+    if "Li" in site.species.elements[0].symbol:
+        prob = site.species.get("Li", 0)
+        state = 1 if np.random.rand() < prob else 0
+        init_sites.append({"idx": i, "coords": site.frac_coords, "state": state})
+
+# === 5. Run simulation ===
+params = {"T": 400, "nu": 5e13, "vol": structure.volume}
+sim = KMCSimulator(structure, adj, init_sites, params)
+
+while sim.t < target_time:
+    if not sim.run_step():
+        break
+
+msd, sigma = sim.properties()
+D = msd / (6 * sim.t) * 1e-16 if sim.t > 0 else 0
+
+print(f"\n=== Simulation Complete ===")
+print(f"T={params['T']}K, Time={sim.t*1e9:.2f}ns")
+print(f"D={D:.4e} cm^2/s")
+print(f"Conductivity: {sigma:.4e} S/cm")
+
+# === 6. Save results ===
+res = {
+    "is_success": True,
+    "conductivity": sigma,
+    "diffusivity": D,
+    "msd": msd,
+    "simulation_time_ns": sim.t * 1e9,
+    "temperature_K": params["T"],
+    "steps": sim.steps,
+    "error_message": None,
+    "execution_log": f"Completed {sim.steps} steps in {sim.t*1e9:.2f}ns"
+}
+out_path = os.path.join(os.getcwd(), "initial_state.json")
+with open(out_path, "w", encoding="utf-8") as f:
+    json.dump(res, f, indent=2)
+```
+----------------------------------------
+   → 코드 작성 완료 (5351 bytes)
+
+📍 [Engineer] 완료
+   💾 코드: 5351 bytes
+[Simulator] Running simulation...
+   Code saved: simulation/003.py
+   Result saved: simulation_result/003.json
+   -> Simulator: Failed. Error = C:\Users\owner\anaconda3\envs\kok...
+
+📍 [Simulator] 완료
+   🧪 결과: Success=False, Cond=None
+📊 [Analyst] 결과 분석 중...
+
+============================================================
+[Analyst] USER PROMPT:
+============================================================
+
+[Goal] Objective: Optimize the ionic conductivity of a 3D lattice model representing a solid electrolyte.
+        Target: Predict conductivity = 0.00197 mS/cm.
+[Success] False
+[Conductivity] N/A
+[Error Log] C:\Users\owner\anaconda3\envs\kokoa\python.exe: can't open file 'C:\\Users\\sjkim\\KOKOA\\runs\\20260112_225402\\runs\\20260112_225402\\simulation\\003.py': [Errno 2] No such file or directory
+
+
+[Execution Log]
+[STDOUT]
+
+[STDERR]
+C:\Users\owner\anaconda3\envs\kokoa\python.exe: can't open file 'C:\\Users\\sjkim\\KOKOA\\runs\\20260112_225402\\runs\\20260112_225402\\simulation\\003.py': [Errno 2] No such file or directory
+
+
+============================================================
+
+[Analyst] LLM Response (streaming):
+----------------------------------------
+{
+    "status": "RETRY",
+    "reason": "The simulation failed because the Python script that is supposed to run the kMC simulation could not be found at the expected path. The error message indicates a missing file rather than a runtime exception in the code itself. However, the provided code snippet is incomplete and contains several issues that would prevent a successful simulation even if the file were present. These include an unfinished `run_step` method, missing imports and definitions, no main execution loop, and questionable physics implementations (e.g., Coulomb energy calculation and rate expression). Therefore, the simulation cannot be evaluated against the target conductivity until the script is correctly located and the code is fully implemented.",
+    "code_issues": [
+        "The `run_step` method is truncated; it lacks closing brackets, rate calculations, and event selection logic.",
+        "No main loop or time integration is present to advance the simulation or accumulate statistics.",
+        "The Coulomb energy calculation divides by the elementary charge, yielding a value in eV but the units are inconsistent with the rest of the code.",
+        "The activation energy `Ea` is defined but never used to compute hopping rates.",
+        "Missing imports for `pymatgen` and potential missing dependencies (e.g., `kokoa` package).",
+        "The script does not output or store the computed conductivity.",
+        "The adjacency construction ignores non‑Li sites but does not handle periodic images correctly for all neighbors.",
+        "The code uses `structure.make_supercell([N,N,N])` but does not update `N` or handle the resulting larger structure size in subsequent logic.",
+        "No error handling for missing CIF file or invalid structure.",
+        "The script path referenced in the error log does not match the location of the provided code snippet."
+    ],
+    "next_instruction": "1. Ensure the simulation script (e.g., simulation/003.py) exists at the specified path or update the run command to point to the correct file.\n2. Complete the `KMCSimulator` class: implement the full `run_step` method, including rate calculation using Arrhenius expression, event selection, time advancement, and state updates.\n3. Add a main execution block that initializes the simulator with appropriate parameters (temperature, attempt frequency, simulation time), runs the kMC loop, and records the mean squared displacement or ion flux to compute conductivity.\n4. Verify the Coulomb energy calculation: it should return energy in eV, not divide by the elementary charge, and should be incorporated into the hopping rate if desired.\n5. Include proper unit handling (e.g., convert lattice constants to cm, time to seconds) when computing conductivity.\n6. Test the script locally to confirm it runs without file‑not‑found errors and produces a conductivity value; compare against the target 0.00197 mS/cm.\n7. If the conductivity is far from the target, adjust model parameters (e.g., activation energy prefactor, attempt frequency, lattice size) and iterate."
+}
+----------------------------------------
+   ⚠️ 코드 이슈: ['The `run_step` method is truncated; it lacks closing brackets, rate calculations, and event selection logic.', 'No main loop or time integration is present to advance the simulation or accumulate statistics.']...
+   → 평가: RETRY | The simulation failed because the Python script th...
+🔄 [System] RETRY. Theorist에게 피드백 전달...
+
+📍 [Analyst] 완료
+   📊 판단: RETRY (오차율: 100.00%)
+[Theorist] Analyzing and formulating hypotheses...
+
+============================================================
+[Theorist] USER PROMPT:
+============================================================
+
+Goal: Objective: Optimize the ionic conductivity of a 3D lattice model representing a solid electrolyte.
+        Target: Predict conductivity = 0.00197 mS/cm.
+Previous Feedback: 1. Ensure the simulation script (e.g., simulation/003.py) exists at the specified path or update the run command to point to the correct file.
+2. Complete the `KMCSimulator` class: implement the full `run_step` method, including rate calculation using Arrhenius expression, event selection, time advancement, and state updates.
+3. Add a main execution block that initializes the simulator with appropriate parameters (temperature, attempt frequency, simulation time), runs the kMC loop, and records the mean squared displacement or ion flux to compute conductivity.
+4. Verify the Coulomb energy calculation: it should return energy in eV, not divide by the elementary charge, and should be incorporated into the hopping rate if desired.
+5. Include proper unit handling (e.g., convert lattice constants to cm, time to seconds) when computing conductivity.
+6. Test the script locally to confirm it runs without file‑not‑found errors and produces a conductivity value; compare against the target 0.00197 mS/cm.
+7. If the conductivity is far from the target, adjust model parameters (e.g., activation energy prefactor, attempt frequency, lattice size) and iterate.
+Failed Attempts: None
+Research Attempts: 0/3
+
+[Current Simulation Code]:
+```python
+import numpy as np
+from pymatgen.core import Structure
+import os, sys, json
+
+# keep simulation time fixed
+try:
+    from kokoa.config import Config
+    target_time = Config.SIMULATION_TIME
+except Exception:
+    target_time = 1e-9
+
+# === 1. Load structure ===
+cif_path = "./Li4.47La3Zr2O12.cif"
+if not os.path.exists(cif_path):
+    raise FileNotFoundError(f"CIF file not found: {cif_path}")
+structure = Structure.from_file(cif_path)
+N = 4
+structure.make_supercell([N, N, N])
+
+# === 2. Build adjacency w...
+```
+
+[Academic Context]:
+[Paper 1] considerations based on either electrochemical or thermodynamic
+models are limited due to missing physical, chemical, and
+electrochemical parameters. In this work, we use kinetic Monte
+Carlo (kMC) simulations with a small set of input parameters to
+model the spatial extent of the SCLs. The predictive power of the kMC model is demonstrated by ﬁnding a critical range for each
+parameter in which the space-charge layer growth is signi ﬁcant and must be considered in electrochemical and ionic devices. The
+time evolution of the charge redistribution is investigated, showing that the SCLs form within 500 ms after applying a bias potential.
+1. INTRODUCTION
+Applications of ion-conducting solids range across energy
+storage,
+1 energy conversion, 2 and ionic devices. 3 One possible
+applicati...
+
+============================================================
+
+[Theorist] LLM Response (streaming):
+----------------------------------------
+```json
+{
+    "needs_research": false,
+    "research_query": "",
+    "knowledge_gap": "",
+    "hypotheses": [
+        {
+            "rank": 1,
+            "title": "Explicit Coulomb Interaction Between Mobile Li⁺ Ions",
+            "mechanism": "Add a screened Coulomb energy term to the hopping barrier, so that the rate k = ν₀·exp[−(Eₐ + ΔE_C)/k_BT] where ΔE_C = Σ_j q²/(4πϵ₀ϵᵣ r_ij). This captures space‑charge effects and local ion–ion repulsion.",
+            "expected_improvement": "More realistic ion dynamics, better agreement with experimental conductivity and SCL formation times (~500 ms).",
+            "implementation_complexity": "medium"
+        },
+        {
+            "rank": 2,
+            "title": "Concentration‑Dependent Activation Energy (c_min/c_max Limits)",
+            "mechanism": "Modify Eₐ to depend on local Li⁺ density using c_min=0 and c_max=1/(a_x a_y a_z). Higher local concentration raises Eₐ, mimicking site blocking.",
+            "expected_improvement": "Captures saturation effects and limits on mobile ion density, improving conductivity predictions.",
+            "implementation_complexity": "low"
+        },
+        {
+            "rank": 3,
+            "title": "Temperature‑Dependent Attempt Frequency",
+            "mechanism": "Replace constant ν₀ with ν₀(T) = ν₀₀·exp(−ΔE_ν/k_BT) to account for phonon‑assisted hopping.",
+            "expected_improvement": "Minor refinement of temperature dependence of conductivity.",
+            "implementation_complexity": "low"
+        }
+    ],
+    "selected_hypothesis": "## Explicit Coulomb Interaction Between Mobile Li⁺ Ions\n**Mechanism:** Add a screened Coulomb energy term ΔE_C to the hopping barrier so that the rate becomes k = ν₀·exp[−(Eₐ + ΔE_C)/k_BT]. ΔE_C is computed as the sum over all other mobile ions of q²/(4πϵ₀ϵᵣ r_ij) using periodic images.\n**Implementation:**\n1. Store positions of all mobile ions in `self.p_pos`.\n2. In `run_step`, before selecting an event, compute ΔE_C for each candidate hop by summing Coulomb interactions with all other ions (use minimum image convention).\n3. Add ΔE_C to the pre‑computed Ea for that hop.\n4. Use the modified barrier in the Arrhenius rate calculation.\n5. Update `self.t` and ion positions as usual.\n**Expected Outcome:** The simulation will now penalize hops that bring ions closer together, reproducing space‑charge layer formation and yielding a conductivity closer to the target 0.00197 mS/cm while also matching the experimentally observed 500 ms SCL growth times."
+}
+```
+----------------------------------------
+   -> Generated 3 hypotheses:
+      #1: Explicit Coulomb Interaction Between Mob...
+      #2: Concentration‑Dependent Activation Energ...
+      #3: Temperature‑Dependent Attempt Frequency...
+   -> Selected: ## Explicit Coulomb Interaction Between Mobile Li⁺ Ions...
+
+📍 [Theorist] 완료
+   💡 가설: ## Explicit Coulomb Interaction Between Mobile Li⁺ Ions
+**Mechanism:** Add a screened Coulomb energy...
+🔧 [Engineer] 시뮬레이션 코드 작성 중...
+
+============================================================
+[Engineer] USER PROMPT:
+============================================================
+
+[Current Hypothesis]
+## Explicit Coulomb Interaction Between Mobile Li⁺ Ions
+**Mechanism:** Add a screened Coulomb energy term ΔE_C to the hopping barrier so that the rate becomes k = ν₀·exp[−(Eₐ + ΔE_C)/k_BT]. ΔE_C is computed as the sum over all other mobile ions of q²/(4πϵ₀ϵᵣ r_ij) using periodic images.
+**Implementation:**
+1. Store positions of all mobile ions in `self.p_pos`.
+2. In `run_step`, before selecting an event, compute ΔE_C for each candidate hop by summing Coulomb interactions with all other ions (use minimum image convention).
+3. Add ΔE_C to the pre‑computed Ea for that hop.
+4. Use the modified barrier in the Arrhenius rate calculation.
+5. Update `self.t` and ion positions as usual.
+**Expected Outcome:** The simulation will now penalize hops that bring ions closer together, reproducing space‑charge layer formation and yielding a conductivity closer to the target 0.00197 mS/cm while also matching the experimentally observed 500 ms SCL growth times.
+
+[Existing Code]
+import numpy as np
+from pymatgen.core import Structure
+import os, sys, json
+
+# keep simulation time fixed
+try:
+    from kokoa.config import Config
+    target_time = Config.SIMULATION_TIME
+except Exception:
+    target_time = 1e-9
+
+# === 1. Load structure ===
+cif_path = "./Li4.47La3Zr2O12.cif"
+if not os.path.exists(cif_path):
+    raise FileNotFoundError(f"CIF file not found: {cif_path}")
+structure = Structure.from_file(cif_path)
+N = 4
+structure.make_supercell([N, N, N])
+
+# === 2. Build adjacency with site‑specific E_a ===
+cutoff = 4.0
+nbrs = structure.get_all_neighbors(r=cutoff)
+adj = {}
+for i, site in enumerate(structure):
+    if "Li" not in site.species.elements[0].symbol:
+        continue
+    lst = []
+    for nb in nbrs[i]:
+        if "Li" in structure[nb.index].species.elements[0].symbol...
+
+[Last Error]
+C:\Users\owner\anaconda3\envs\kokoa\python.exe: can't open file 'C:\\Users\\sjkim\\KOKOA\\runs\\20260112_225402\\runs\\20260112_225402\\simulation\\003.py': [Errno 2] No such file or directory
+
+
+============================================================
+
+[Engineer] LLM Response (streaming):
+----------------------------------------

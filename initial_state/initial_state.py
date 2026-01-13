@@ -2,20 +2,16 @@
 import numpy as np
 from pymatgen.core import Structure
 import os
-import sys
-
-# Add project root to path for config import
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from kokoa.config import Config
 
 # === 1. Structure Loading ===
-cif_path = "./Li4.47La3Zr2O12.cif"
+# Use absolute path based on this file's location
+cif_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Li4.47La3Zr2O12.cif")
 if not os.path.exists(cif_path):
     raise FileNotFoundError(f"CIF file not found: {cif_path}")
 
 structure = Structure.from_file(cif_path)
 
-N = 8  # Supercell expansion
+N = 3  # Supercell expansion
 structure.make_supercell([N, N, N])
 print(f"Supercell: {N}x{N}x{N}, Total atoms: {len(structure)}")
 
@@ -113,7 +109,7 @@ class KMCSimulator:
 sim_params = {'T': 300, 'E_a': 0.28, 'nu': 1e13, 'volume': structure.volume}
 sim = KMCSimulator(structure, adj_list, initial_sites, sim_params)
 
-target_time = Config.SIMULATION_TIME  # Managed in kokoa/config.py
+target_time = 5e-9  # 5ns (DO NOT MODIFY)
 log_interval = 2000
 
 while sim.current_time < target_time:
@@ -126,7 +122,28 @@ while sim.current_time < target_time:
 
 # Final result
 msd, sigma = sim.calculate_properties()
+D = msd / (6 * sim.current_time) * 1e-16 if sim.current_time > 0 else 0
+
 print(f"\n=== Simulation Complete ===")
 print(f"T={sim_params['T']}K, Time={sim.current_time*1e9:.2f}ns")
-print(f"D={msd/(6*sim.current_time)*1e-16:.4e} cm^2/s")
+print(f"D={D:.4e} cm^2/s")
 print(f"Conductivity: {sigma:.4e} S/cm")
+
+# Save result to JSON
+import json
+result = {
+    "is_success": True,
+    "conductivity": sigma,
+    "diffusivity": D,
+    "msd": msd,
+    "simulation_time_ns": sim.current_time * 1e9,
+    "temperature_K": sim_params['T'],
+    "steps": sim.step_count,
+    "error_message": None,
+    "execution_log": f"Completed {sim.step_count} steps in {sim.current_time*1e9:.2f}ns"
+}
+
+result_path = os.path.join(os.path.dirname(__file__), "initial_state.json")
+with open(result_path, 'w', encoding='utf-8') as f:
+    json.dump(result, f, indent=2)
+print(f"\n📁 결과 저장: {result_path}")

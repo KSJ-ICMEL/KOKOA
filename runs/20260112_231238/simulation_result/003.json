@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-01-12T23:15:37.097972",
+  "iteration": 3,
+  "is_success": false,
+  "conductivity": null,
+  "conductivity_unit": "S/cm",
+  "error_message": "  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260112_231238\\simulation\\003.py\", line 24\n    * `n` \\u2013 number of students  \n          ^\nSyntaxError: invalid character '\\u2013' (U+2013)\n",
+  "execution_log": "[STDOUT]\n\n[STDERR]\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260112_231238\\simulation\\003.py\", line 24\n    * `n` \\u2013 number of students  \n          ^\nSyntaxError: invalid character '\\u2013' (U+2013)\n",
+  "image_path": null
+}

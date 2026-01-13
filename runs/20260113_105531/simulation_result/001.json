@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-01-13T10:56:13.478248",
+  "iteration": 1,
+  "is_success": false,
+  "conductivity": null,
+  "conductivity_unit": "S/cm",
+  "error_message": "Runtime Error: attr='unit_vector' not found on PeriodicNeighbor\nTraceback (most recent call last):\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260113_105531\\simulation\\001.py\", line 84, in <module>\n    disp = nb.distance * nb.unit_vector   # \\xc5\n                         ^^^^^^^^^^^^^^\n  File \"C:\\Users\\owner\\anaconda3\\envs\\kokoa\\Lib\\site-packages\\pymatgen\\core\\sites.py\", line 87, in __getattr__\n    raise AttributeError(f\"{attr=} not found on {type(self).__name__}\")\nAttributeError: attr='unit_vector' not found on PeriodicNeighbor\n",
+  "execution_log": "[STDOUT]\n\n[STDERR]\nRuntime Error: attr='unit_vector' not found on PeriodicNeighbor\nTraceback (most recent call last):\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260113_105531\\simulation\\001.py\", line 84, in <module>\n    disp = nb.distance * nb.unit_vector   # \\xc5\n                         ^^^^^^^^^^^^^^\n  File \"C:\\Users\\owner\\anaconda3\\envs\\kokoa\\Lib\\site-packages\\pymatgen\\core\\sites.py\", line 87, in __getattr__\n    raise AttributeError(f\"{attr=} not found on {type(self).__name__}\")\nAttributeError: attr='unit_vector' not found on PeriodicNeighbor\n",
+  "image_path": null
+}

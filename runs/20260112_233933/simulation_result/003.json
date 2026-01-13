@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-01-12T23:41:02.333504",
+  "iteration": 3,
+  "is_success": false,
+  "conductivity": null,
+  "conductivity_unit": "S/cm",
+  "error_message": "Runtime Error: 'Structure' object has no attribute 'species_string'\nTraceback (most recent call last):\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260112_233933\\simulation\\003.py\", line 169, in <module>\n    sim = KMCSimulator(structure)\n          ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260112_233933\\simulation\\003.py\", line 60, in __init__\n    self.mobile_sites = np.where(structure.species_string == mobile_species)[0]\n                                 ^^^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: 'Structure' object has no attribute 'species_string'\n",
+  "execution_log": "[STDOUT]\n\n[STDERR]\nRuntime Error: 'Structure' object has no attribute 'species_string'\nTraceback (most recent call last):\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260112_233933\\simulation\\003.py\", line 169, in <module>\n    sim = KMCSimulator(structure)\n          ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260112_233933\\simulation\\003.py\", line 60, in __init__\n    self.mobile_sites = np.where(structure.species_string == mobile_species)[0]\n                                 ^^^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: 'Structure' object has no attribute 'species_string'\n",
+  "image_path": null
+}

@@ -1,8 +1,5 @@
 """
-Simulator Agent
-===============
-코드를 샌드박스에서 실행하고 결과 수집
-simulation/ 폴더에 코드, simulation_result/ 폴더에 결과 저장
+Simulator Agent - Code execution and result collection
 """
 
 import os
@@ -18,21 +15,55 @@ from kokoa.config import Config
 from kokoa.state import AgentState, SimulationResult
 
 
+def validate_kmc_code(code: str) -> tuple:
+    """Validate generated code is actually kMC simulation
+    
+    Returns: (is_valid: bool, error_message: str)
+    """
+    # Forbidden patterns (hallucination detection)
+    forbidden = ["students", "friendships", "infected", "infection", "BFS", "breadth"]
+    for pattern in forbidden:
+        if pattern.lower() in code.lower():
+            return False, f"Invalid code: contains '{pattern}' (not kMC simulation)"
+    
+    # Required patterns
+    required = ["conductivity"]
+    missing = [p for p in required if p.lower() not in code.lower()]
+    if missing:
+        return False, f"Missing required elements: {missing}"
+    
+    # Note: Non-ASCII characters like 'Å' (Angstrom), '·' are allowed in scientific code
+    
+    return True, "OK"
+
+
 def execute_simulation_code(code: str, run_dir: str, iteration: int, timeout: int = 120) -> SimulationResult:
     sim_dir = os.path.join(run_dir, "simulation")
     os.makedirs(sim_dir, exist_ok=True)
     
     script_name = f"{iteration:03d}.py"
-    script_path = os.path.join(sim_dir, script_name)
+    script_path = os.path.abspath(os.path.join(sim_dir, script_name))
     
     indented_code = textwrap.indent(code, '    ')
     safe_run_dir = os.path.abspath(run_dir).replace("\\", "/")
+    
+    # Calculate project root and CIF path
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    cif_path = os.path.join(project_root, "Li4.47La3Zr2O12.cif").replace("\\", "/")
+    safe_project_root = project_root.replace("\\", "/")
     
     wrapped_code = f'''"""
 KOKOA Simulation #{iteration}
 Generated: {time.strftime("%Y-%m-%d %H:%M:%S")}
 """
 import os, sys, traceback
+
+# Pre-calculated paths
+_PROJECT_ROOT = "{safe_project_root}"
+_CIF_PATH = "{cif_path}"
+
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
 try:
     os.chdir('{safe_run_dir}')
@@ -122,9 +153,7 @@ def save_result(result: SimulationResult, run_dir: str, iteration: int):
     print(f"   Result saved: simulation_result/{result_name}")
 
 
-def simulator_node(state: AgentState) -> dict:
-    print("[Simulator] Running simulation...")
-    
+def simulator_node(state: AgentState) -> dict:    
     iteration = state.get("iteration_count", 0) + 1
     code = state.get("python_code", "")
     run_dir = state.get("run_dir")
@@ -138,8 +167,28 @@ def simulator_node(state: AgentState) -> dict:
                 execution_log="Empty code"
             ),
             "iteration_count": iteration,
-            "research_log": research_log + ["Simulator: No code to execute"]
+            "research_log": research_log + ["Simulator: No code"]
         }
+    
+    # Validate code before execution
+    is_valid, validation_msg = validate_kmc_code(code)
+    if not is_valid:
+        print(f"   ⚠️ Code validation failed: {validation_msg}")
+        # Rollback to last valid code
+        last_valid = state.get("last_valid_code", "")
+        if last_valid:
+            print("   → Rolling back to last valid code")
+            code = last_valid
+        else:
+            return {
+                "simulation_output": SimulationResult(
+                    is_success=False,
+                    error_message=f"Code validation failed: {validation_msg}",
+                    execution_log="Invalid code detected"
+                ),
+                "iteration_count": iteration,
+                "research_log": research_log + [f"Simulator: Validation failed - {validation_msg}"]
+            }
     
     if not run_dir:
         run_dir = os.path.join(Config.RUNS_DIR, "default")
@@ -149,11 +198,11 @@ def simulator_node(state: AgentState) -> dict:
     save_result(result, run_dir, iteration)
     
     if result.is_success:
-        log_msg = f"Simulator: Success. Conductivity = {result.conductivity} S/cm"
+        log_msg = f"Simulator: σ = {result.conductivity} S/cm"
     else:
-        log_msg = f"Simulator: Failed. Error = {result.error_message}"
+        log_msg = f"Simulator: Failed - {result.error_message}"
     
-    print(f"   -> {log_msg[:60]}...")
+    print(f"   → {log_msg}")
     
     return {
         "simulation_output": result,

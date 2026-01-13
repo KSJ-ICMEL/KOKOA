@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-01-12T23:13:10.287694",
+  "iteration": 1,
+  "is_success": true,
+  "conductivity": 0.0001319151543994716,
+  "conductivity_unit": "S/cm",
+  "error_message": null,
+  "execution_log": "[STDOUT]\n\n=== Simulation Complete ===\nT=300K, Time=10.07ns\nD=1.2923e-09 cm^2/s\nConductivity: 0.0001319151543994716 S/cm\n\n[STDERR]\n",
+  "image_path": null
+}

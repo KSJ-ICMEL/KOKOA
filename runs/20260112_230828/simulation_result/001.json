@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-01-12T23:09:03.100578",
+  "iteration": 1,
+  "is_success": false,
+  "conductivity": null,
+  "conductivity_unit": "S/cm",
+  "error_message": "Runtime Error: CIF file not found: C:\\Users\\sjkim\\KOKOA\\runs\\Li4.47La3Zr2O12.cif\nTraceback (most recent call last):\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260112_230828\\simulation\\001.py\", line 29, in <module>\n    raise FileNotFoundError(f\"CIF file not found: {cif_path}\")\nFileNotFoundError: CIF file not found: C:\\Users\\sjkim\\KOKOA\\runs\\Li4.47La3Zr2O12.cif\n",
+  "execution_log": "[STDOUT]\n\n[STDERR]\nRuntime Error: CIF file not found: C:\\Users\\sjkim\\KOKOA\\runs\\Li4.47La3Zr2O12.cif\nTraceback (most recent call last):\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260112_230828\\simulation\\001.py\", line 29, in <module>\n    raise FileNotFoundError(f\"CIF file not found: {cif_path}\")\nFileNotFoundError: CIF file not found: C:\\Users\\sjkim\\KOKOA\\runs\\Li4.47La3Zr2O12.cif\n",
+  "image_path": null
+}

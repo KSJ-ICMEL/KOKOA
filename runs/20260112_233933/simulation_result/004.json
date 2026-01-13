@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-01-12T23:41:22.655913",
+  "iteration": 4,
+  "is_success": false,
+  "conductivity": null,
+  "conductivity_unit": "S/cm",
+  "error_message": "Runtime Error: No sites with species 'Li' found in the structure.\nTraceback (most recent call last):\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260112_233933\\simulation\\004.py\", line 162, in <module>\n    sim = KMCSimulator(structure)\n          ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260112_233933\\simulation\\004.py\", line 59, in __init__\n    raise ValueError(f\"No sites with species '{mobile_species}' found in the structure.\")\nValueError: No sites with species 'Li' found in the structure.\n",
+  "execution_log": "[STDOUT]\n\n[STDERR]\nRuntime Error: No sites with species 'Li' found in the structure.\nTraceback (most recent call last):\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260112_233933\\simulation\\004.py\", line 162, in <module>\n    sim = KMCSimulator(structure)\n          ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260112_233933\\simulation\\004.py\", line 59, in __init__\n    raise ValueError(f\"No sites with species '{mobile_species}' found in the structure.\")\nValueError: No sites with species 'Li' found in the structure.\n",
+  "image_path": null
+}

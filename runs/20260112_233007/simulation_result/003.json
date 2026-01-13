@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-01-12T23:31:46.715919",
+  "iteration": 3,
+  "is_success": true,
+  "conductivity": null,
+  "conductivity_unit": "S/cm",
+  "error_message": "C:\\Users\\sjkim\\KOKOA\\runs\\20260112_233007\\simulation\\003.py:168: RuntimeWarning: invalid value encountered in scalar divide\n  D_cm2_s = msd / (2 * dim * self.time) * 1e-16   # \\xc5² → cm²\n",
+  "execution_log": "[STDOUT]\nConductivity: nan S/cm\n\n[STDERR]\nC:\\Users\\sjkim\\KOKOA\\runs\\20260112_233007\\simulation\\003.py:168: RuntimeWarning: invalid value encountered in scalar divide\n  D_cm2_s = msd / (2 * dim * self.time) * 1e-16   # \\xc5² → cm²\n",
+  "image_path": null
+}

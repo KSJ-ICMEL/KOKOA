@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-01-12T22:54:29.793391",
+  "iteration": 1,
+  "is_success": false,
+  "conductivity": null,
+  "conductivity_unit": "S/cm",
+  "error_message": "C:\\Users\\owner\\anaconda3\\envs\\kokoa\\python.exe: can't open file 'C:\\\\Users\\\\sjkim\\\\KOKOA\\\\runs\\\\20260112_225402\\\\runs\\\\20260112_225402\\\\simulation\\\\001.py': [Errno 2] No such file or directory\n",
+  "execution_log": "[STDOUT]\n\n[STDERR]\nC:\\Users\\owner\\anaconda3\\envs\\kokoa\\python.exe: can't open file 'C:\\\\Users\\\\sjkim\\\\KOKOA\\\\runs\\\\20260112_225402\\\\runs\\\\20260112_225402\\\\simulation\\\\001.py': [Errno 2] No such file or directory\n",
+  "image_path": null
+}

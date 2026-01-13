@@ -4,6 +4,8 @@ Researcher Agent
 arXiv에서 논문을 검색하고 벡터스토어에 임베딩
 """
 
+import os
+
 from langchain_community.document_loaders import ArxivLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
@@ -58,8 +60,12 @@ def researcher_node(state: AgentState) -> dict:
         encode_kwargs={"normalize_embeddings": True}
     )
     
+    # Use run-specific chroma_store
+    run_dir = state.get("run_dir", ".")
+    run_chroma_path = os.path.join(run_dir, "chroma_store")
+    
     vectorstore = Chroma(
-        persist_directory=Config.PERSIST_DIRECTORY,
+        persist_directory=run_chroma_path,
         embedding_function=embedding_model
     )
     vectorstore.add_documents(splits)

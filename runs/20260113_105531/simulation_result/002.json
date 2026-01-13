@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-01-13T10:57:03.685814",
+  "iteration": 2,
+  "is_success": false,
+  "conductivity": null,
+  "conductivity_unit": "S/cm",
+  "error_message": "Runtime Error: No possible hops; simulation stuck.\nTraceback (most recent call last):\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260113_105531\\simulation\\002.py\", line 208, in <module>\n    sim.run_step()\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260113_105531\\simulation\\002.py\", line 157, in run_step\n    raise RuntimeError(\"No possible hops; simulation stuck.\")\nRuntimeError: No possible hops; simulation stuck.\n",
+  "execution_log": "[STDOUT]\n\n[STDERR]\nRuntime Error: No possible hops; simulation stuck.\nTraceback (most recent call last):\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260113_105531\\simulation\\002.py\", line 208, in <module>\n    sim.run_step()\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260113_105531\\simulation\\002.py\", line 157, in run_step\n    raise RuntimeError(\"No possible hops; simulation stuck.\")\nRuntimeError: No possible hops; simulation stuck.\n",
+  "image_path": null
+}

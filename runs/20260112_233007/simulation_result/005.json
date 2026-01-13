@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-01-12T23:32:26.644970",
+  "iteration": 5,
+  "is_success": false,
+  "conductivity": null,
+  "conductivity_unit": "S/cm",
+  "error_message": "Runtime Error: species property only supports ordered structures!\nTraceback (most recent call last):\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260112_233007\\simulation\\005.py\", line 180, in <module>\n    sim = KMCSimulator(structure, cutoff, base_Ea, alpha, beta,\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260112_233007\\simulation\\005.py\", line 76, in __init__\n    self.mobile_species = struct.species[0].symbol\n                          ^^^^^^^^^^^^^^\n  File \"C:\\Users\\owner\\anaconda3\\envs\\kokoa\\Lib\\site-packages\\pymatgen\\core\\structure.py\", line 294, in species\n    raise AttributeError(\"species property only supports ordered structures!\")\nAttributeError: species property only supports ordered structures!\n",
+  "execution_log": "[STDOUT]\n\n[STDERR]\nRuntime Error: species property only supports ordered structures!\nTraceback (most recent call last):\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260112_233007\\simulation\\005.py\", line 180, in <module>\n    sim = KMCSimulator(structure, cutoff, base_Ea, alpha, beta,\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260112_233007\\simulation\\005.py\", line 76, in __init__\n    self.mobile_species = struct.species[0].symbol\n                          ^^^^^^^^^^^^^^\n  File \"C:\\Users\\owner\\anaconda3\\envs\\kokoa\\Lib\\site-packages\\pymatgen\\core\\structure.py\", line 294, in species\n    raise AttributeError(\"species property only supports ordered structures!\")\nAttributeError: species property only supports ordered structures!\n",
+  "image_path": null
+}

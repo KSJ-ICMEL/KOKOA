@@ -4,6 +4,9 @@ KOKOA Configuration
 
 import os
 
+# Project root = directory containing kokoa/ (one level up from this file)
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 
 def get_device():
     """Auto-detect best available device (cuda > mps > cpu)"""
@@ -19,7 +22,7 @@ def get_device():
 
 
 class Config:
-    MODEL_NAME = "deepseek-r1:8b"
+    MODEL_NAME = "gpt-oss:120b"
     TEMPERATURE = 0.1
     
     EMBEDDING_MODEL = "BAAI/bge-m3"
@@ -29,12 +32,13 @@ class Config:
     MAX_LOOPS = 10
     MAX_RESEARCH_ATTEMPTS = 3
     
-    INITIAL_STATE_DIR = "./initial_state"
-    RUNS_DIR = "./runs"
+    # Use absolute paths based on project root
+    INITIAL_STATE_DIR = os.path.join(_PROJECT_ROOT, "initial_state")
+    RUNS_DIR = os.path.join(_PROJECT_ROOT, "runs")
     
-    PERSIST_DIRECTORY = "./chroma_store"
-    PDF_DIRECTORY = "./pdf"
-    WORKSPACE_DIR = "./workspace"  # Legacy, will be removed
+    PERSIST_DIRECTORY = os.path.join(_PROJECT_ROOT, "initial_state", "chroma_store")
+    PDF_DIRECTORY = os.path.join(_PROJECT_ROOT, "initial_state", "pdf")
+    WORKSPACE_DIR = os.path.join(_PROJECT_ROOT, "workspace")  # Legacy
     
     CHUNK_SIZE = 1200
     CHUNK_OVERLAP = 300
@@ -42,7 +46,7 @@ class Config:
     ARXIV_MAX_DOCS = 3
     
     # Simulation parameters
-    SIMULATION_TIME = 1e-9  # Target simulation time in seconds (default: 1ns)
+    SIMULATION_TIME = 5e-9  # Target simulation time in seconds (default: 5ns)
     
     @classmethod
     def from_env(cls):

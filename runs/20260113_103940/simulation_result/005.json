@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-01-13T10:42:07.563994",
+  "iteration": 5,
+  "is_success": true,
+  "conductivity": 0.0,
+  "conductivity_unit": "S/cm",
+  "error_message": "C:\\Users\\sjkim\\KOKOA\\runs\\20260113_103940\\simulation\\005.py:158: RuntimeWarning: divide by zero encountered in scalar divide\n  dt = -np.log(np.random.rand()) / total_rate\n",
+  "execution_log": "[STDOUT]\nConductivity: 0.000e+00 S/cm\n\n[STDERR]\nC:\\Users\\sjkim\\KOKOA\\runs\\20260113_103940\\simulation\\005.py:158: RuntimeWarning: divide by zero encountered in scalar divide\n  dt = -np.log(np.random.rand()) / total_rate\n",
+  "image_path": null
+}

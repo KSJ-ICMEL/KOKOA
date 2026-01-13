@@ -24,6 +24,7 @@ class AgentState(TypedDict):
     goal: str
     hypothesis: str
     python_code: str
+    last_valid_code: str  # For rollback support
     
     simulation_output: Optional[SimulationResult]
     current_error_rate: Optional[float]

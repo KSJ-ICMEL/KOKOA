@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-01-13T10:59:23.329589",
+  "iteration": 3,
+  "is_success": false,
+  "conductivity": null,
+  "conductivity_unit": "S/cm",
+  "error_message": "Timeout after 120s",
+  "execution_log": "Execution timed out",
+  "image_path": null
+}

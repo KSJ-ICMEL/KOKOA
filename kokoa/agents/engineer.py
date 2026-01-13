@@ -1,7 +1,5 @@
 """
-Engineer Agent
-==============
-가설을 기반으로 시뮬레이션 코드 작성
+Engineer Agent - kMC simulation code generation
 """
 
 from langchain_core.prompts import ChatPromptTemplate
@@ -10,84 +8,80 @@ from langchain_core.output_parsers import StrOutputParser
 from kokoa.state import AgentState
 
 
-ENGINEER_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """You are a Python coding expert specializing in kinetic Monte Carlo (kMC) simulations for solid electrolytes.
-Your task: Implement the Theorist's hypothesis by writing or modifying Python code.
+USER_PROMPT = """Hypothesis: {hypothesis}
 
-[CRITICAL CONSTRAINTS]
-1. DO NOT modify `target_time`. Simulation time is fixed at 10 ns (competition deadline).
-2. MUST print conductivity in exact format: print(f"Conductivity: {{val}} S/cm")
-3. NO `pip install` or `subprocess` calls. Use only pre-installed libraries.
-
-[AVAILABLE LIBRARIES]
-Standard: numpy, scipy, matplotlib, pandas
-Materials Science: pymatgen, ase, matminer, diffpy
-kMC Specific: If kmos or similar is available, feel free to use it.
-You may also try other common scientific Python libraries - if unavailable, the error will be caught and you can retry.
-
-[ENCOURAGED MODIFICATIONS - Be Creative!]
-You are encouraged to explore novel physics implementations:
-- Novel hop rate formulations (angle-dependent, local environment-dependent)
-- Concentration-dependent activation energies
-- Multi-ion correlation effects (beyond exclusion principle)
-- Alternative energy barrier calculations (NEB-inspired, bond-order)
-- Advanced neighbor selection (Voronoi, coordination shell)
-- Temperature-dependent prefactors
-- Defect clustering effects
-- Strain-dependent conductivity
-
-[General Guidelines]
-1. If creating a plot, save as 'result.png'.
-2. Handle errors robustly (try-except).
-3. Maintain MSD calculation → Diffusion coefficient → Conductivity pipeline.
-4. Preserve particle tracking for proper MSD computation.
-
-[CODE STYLE - Token Efficiency]
-- Write concise, minimal code. Avoid verbose comments.
-- Use short but meaningful variable names (e.g., src, tgt, vec, msd).
-- English only. No emojis, no non-ASCII characters.
-- Minimize print statements. Only essential outputs.
-- Inline simple operations. Avoid unnecessary intermediate variables.
-
-[Output Format]
-Provide ONLY the Python code block (```python ... ```). No explanations.
-"""),
-    ("user", """
-[Current Hypothesis]
-{hypothesis}
-
-[Existing Code]
+Code ({code_len} bytes):
 {current_code}
 
-[Instruction]
-Update the code to implement the hypothesis. 
-If previous run failed (Error: {last_error}), fix the bug.
-""")
+Error: {last_error}
+
+Implement the hypothesis. Use target_time = {simulation_time}.
+"""
+
+ENGINEER_PROMPT = ChatPromptTemplate.from_messages([
+    ("system", """You are a kMC simulation expert for solid electrolytes.
+
+RULES:
+1. NO 'kokoa' imports. Code must be standalone.
+2. target_time = {simulation_time} seconds (fixed).
+3. Use _CIF_PATH variable for CIF file (pre-injected).
+4. Supercell: structure.make_supercell([3, 3, 3]) (fixed 3×3×3).
+5. Print: print(f"Conductivity: {{val}} S/cm")
+6. No subprocess/pip calls.
+
+LIBRARIES: numpy, scipy, pymatgen, matplotlib
+
+REQUIRED STRUCTURE:
+- Load structure from _CIF_PATH
+- KMCSimulator class with run_step(), calculate_properties()
+- MSD → D → conductivity pipeline
+- Track particle positions for MSD
+- Print progress every 2000 steps: Step, Time(ns), MSD, sigma(mS/cm)
+
+Output: Python code block only (```python ... ```). No explanations."""),
+    ("user", USER_PROMPT)
 ])
 
 
 def engineer_node(state: AgentState, llm) -> dict:
-    print("🔧 [Engineer] 시뮬레이션 코드 작성 중...")
-    
     current_code = state.get("python_code", "") or "# No existing code."
     
     last_error = "None"
     if state.get("simulation_output") and not state["simulation_output"].is_success:
         last_error = state["simulation_output"].error_message or "Unknown error"
     
-    chain = ENGINEER_PROMPT | llm | StrOutputParser()
-    new_code_raw = chain.invoke({
+    from kokoa.config import Config
+    simulation_time = Config.SIMULATION_TIME
+    
+    # Truncate code for prompt
+    code_preview = current_code[:1500] if len(current_code) > 1500 else current_code
+    
+    user_prompt_vars = {
         "hypothesis": state["hypothesis"],
-        "current_code": current_code,
-        "last_error": last_error
-    })
+        "current_code": code_preview,
+        "code_len": len(current_code),
+        "last_error": last_error[:500] if last_error else "None",
+        "simulation_time": simulation_time
+    }
+    
+    # Print USER PROMPT
+    print("[Engineer] USER PROMPT:")
+    print(USER_PROMPT.format(**user_prompt_vars))
+    
+    # Stream LLM response
+    print("[Engineer] RESPONSE:")
+    new_code_raw = ""
+    for chunk in llm.stream(ENGINEER_PROMPT.format_messages(**user_prompt_vars)):
+        content = chunk.content if hasattr(chunk, 'content') else str(chunk)
+        print(content, end="", flush=True)
+        new_code_raw += content
+    print("\n")
     
     cleaned_code = new_code_raw.replace("```python", "").replace("```", "").strip()
-    
-    print(f"   → 코드 작성 완료 ({len(cleaned_code)} bytes)")
-    
+       
     return {
         "python_code": cleaned_code,
+        "last_valid_code": state.get("python_code", ""),  # Save for rollback
         "research_log": state.get("research_log", []) + ["Engineer: Code updated."]
     }
 

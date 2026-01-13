@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-01-13T10:40:22.006834",
+  "iteration": 1,
+  "is_success": false,
+  "conductivity": null,
+  "conductivity_unit": "S/cm",
+  "error_message": "Runtime Error: '<' not supported between instances of 'method' and 'method'\nTraceback (most recent call last):\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260113_103940\\simulation\\001.py\", line 69, in <module>\n    r0 = min(distances) if distances else 0.0\n         ^^^^^^^^^^^^^^\nTypeError: '<' not supported between instances of 'method' and 'method'\n",
+  "execution_log": "[STDOUT]\n\n[STDERR]\nRuntime Error: '<' not supported between instances of 'method' and 'method'\nTraceback (most recent call last):\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260113_103940\\simulation\\001.py\", line 69, in <module>\n    r0 = min(distances) if distances else 0.0\n         ^^^^^^^^^^^^^^\nTypeError: '<' not supported between instances of 'method' and 'method'\n",
+  "image_path": null
+}

@@ -84,10 +84,15 @@ def build_knowledge_base(pdf_directory: str = None, force_rebuild: bool = False)
     return retriever
 
 
-def get_vectorstore():
-    """기존 벡터스토어 로드"""
+def get_vectorstore(persist_directory: str = None):
+    """Load existing vector store
+    
+    Args:
+        persist_directory: Optional custom path (for run-specific store)
+    """
     embedding_model = get_embedding_model()
+    persist_dir = persist_directory or Config.PERSIST_DIRECTORY
     return Chroma(
-        persist_directory=Config.PERSIST_DIRECTORY,
+        persist_directory=persist_dir,
         embedding_function=embedding_model
     )

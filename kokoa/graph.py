@@ -4,6 +4,7 @@ KOKOA Graph Assembly
 에이전트들을 연결하는 LangGraph 워크플로우
 """
 
+import sys
 import uuid
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
@@ -13,13 +14,33 @@ from kokoa.state import AgentState, create_initial_state
 from kokoa.agents.researcher import researcher_node
 
 
+class TeeWriter:
+    """Write to both console and file simultaneously"""
+    def __init__(self, file_path):
+        self.file = open(file_path, 'w', encoding='utf-8')
+        self.stdout = sys.stdout
+    
+    def write(self, data):
+        self.stdout.write(data)
+        self.stdout.flush()
+        self.file.write(data)
+        self.file.flush()
+    
+    def flush(self):
+        self.stdout.flush()
+        self.file.flush()
+    
+    def close(self):
+        self.file.close()
+
+
 def analyst_router(state: AgentState) -> str:
     status = state.get("status", "")
     if status == "FINISH":
-        print("🎉 [System] 연구 목표 달성! 종료합니다.")
+        print("[System] 연구 목표 달성! 종료합니다.")
         return "end"
     elif status in ("RETRY", "ROLLBACK"):
-        print(f"🔄 [System] {status}. Theorist에게 피드백 전달...")
+        print(f"[System] {status}. Theorist에게 피드백 전달")
         return "theorist"
     return "theorist"
 
@@ -29,11 +50,11 @@ def theorist_router(state: AgentState) -> str:
     research_attempts = state.get("research_attempts", 0)
     
     if needs_research and research_attempts < Config.MAX_RESEARCH_ATTEMPTS:
-        print("📚 [System] 외부 연구 필요. Researcher 호출...")
+        print("[System] 외부 연구 필요. Researcher 호출...")
         return "researcher"
     
     if needs_research:
-        print(f"⚠️ [System] 최대 연구 시도 도달. Engineer로 진행...")
+        print(f"[System] 최대 연구 시도 도달. Engineer로 진행...")
     
     return "engineer"
 
@@ -96,43 +117,54 @@ def run_experiment(app, goal: str, thread_id: str = None):
         최종 상태
     """
     if thread_id is None:
-        thread_id = str(uuid.uuid4())[:8]
+        thread_id = str(uuid.uuid4())
     
-    config = {"configurable": {"thread_id": thread_id}}
+    # Set recursion limit based on MAX_LOOPS (4 nodes per iteration + buffer)
+    recursion_limit = Config.MAX_LOOPS * 5 + 20
+    config = {"configurable": {"thread_id": thread_id}, "recursion_limit": recursion_limit}
     initial_state = create_initial_state(goal)
     
     run_dir = initial_state.get("run_dir", "unknown")
     run_id = initial_state.get("run_id", thread_id)
     
+    # Setup output logging to run_dir/output.txt
+    import os
+    output_path = os.path.join(run_dir, "output.txt")
+    tee = TeeWriter(output_path)
+    original_stdout = sys.stdout
+    sys.stdout = tee
+    
     print(f"🚀 KOKOA 시작 (Run: {run_id})")
     print(f"📁 출력 디렉토리: {run_dir}")
-    print(f"🎯 목표: {goal[:80]}...")
-    print("=" * 60)
+    print(f"📝 로그 파일: {output_path}")
+    print(f"🎯 목표: {goal}")
+    print("\n\n")
     
     final_state = None
     try:
         for event in app.stream(initial_state, config):
             for node_name, node_output in event.items():
-                print(f"\n📍 [{node_name}] 완료")
+                print(f"\n[{node_name}] 완료")
                 
                 if node_name == "Theorist":
-                    hyp = node_output.get('hypothesis', '')[:100]
+                    hyp = node_output.get('hypothesis', '')
                     if hyp:
-                        print(f"   💡 가설: {hyp}...")
+                        print(f"가설: {hyp}...")
                 elif node_name == "Engineer":
                     code_len = len(node_output.get('python_code', ''))
-                    print(f"   💾 코드: {code_len} bytes")
+                    print(f"코드: {code_len} bytes")
                 elif node_name == "Simulator":
                     result = node_output.get("simulation_output")
                     if result:
-                        print(f"   🧪 결과: Success={result.is_success}, Cond={result.conductivity}")
+                        print(f"결과: Success={result.is_success}, Cond={result.conductivity}")
                 elif node_name == "Analyst":
                     status = node_output.get("status")
                     err = node_output.get('current_error_rate', 0)
-                    print(f"   📊 판단: {status} (오차율: {err:.2f}%)")
+                    print(f"판단: {status} (오차율: {err:.2f}%)")
                 elif node_name == "Researcher":
                     attempts = node_output.get("research_attempts", 0)
-                    print(f"   📚 연구 시도: {attempts}")
+                    print(f"연구 시도: {attempts}")
+                print('\n')
                 
                 final_state = node_output
         
@@ -141,6 +173,11 @@ def run_experiment(app, goal: str, thread_id: str = None):
         
     except Exception as e:
         print(f"\n🚨 에러: {e}")
+    finally:
+        # Restore stdout and close file
+        sys.stdout = original_stdout
+        tee.close()
+        print(f"📝 로그 저장 완료: {output_path}")
     
     return final_state
 
