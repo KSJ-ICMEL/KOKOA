@@ -30,6 +30,6 @@ __pycache__/
 # Thumbs.db
 
 # Environment
-# .env
+.env
 # .venv/
 # venv/
