@@ -48,6 +48,17 @@ class Config:
     # Simulation parameters
     SIMULATION_TIME = 5e-9  # Target simulation time in seconds (default: 5ns)
     
+    # Memory permission control
+    # Only high-quality models can write to unified memory (prevent hallucination pollution)
+    MEMORY_WRITE_ALLOWED_MODELS = [
+        "gpt-oss:120b"
+    ]
+    
+    @classmethod
+    def can_write_memory(cls) -> bool:
+        """Check if current model has permission to write to unified memory"""
+        return cls.MODEL_NAME in cls.MEMORY_WRITE_ALLOWED_MODELS
+    
     @classmethod
     def from_env(cls):
         config = cls()
@@ -55,4 +66,5 @@ class Config:
         config.PERSIST_DIRECTORY = os.getenv("KOKOA_CHROMA_DIR", config.PERSIST_DIRECTORY)
         config.EMBEDDING_DEVICE = os.getenv("KOKOA_DEVICE", config.EMBEDDING_DEVICE)
         return config
+
 

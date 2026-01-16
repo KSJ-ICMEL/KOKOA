@@ -2,7 +2,12 @@
 """
 KOKOA - Knowledge-Oriented Kinetic Optimization Agent
 ======================================================
-메인 실행 스크립트
+Main execution script
+
+3-Agent Architecture:
+- Scientist: Knowledge search + code generation (Theorist + Researcher merged)
+- CodeAgent: Execution + parallel debugging
+- Archivist: Memory archiving only (no LLM evaluation)
 
 Usage:
     python main.py --goal "Maximize ionic conductivity in LLZO"
@@ -11,14 +16,19 @@ Usage:
 
 import argparse
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 from langchain_ollama import ChatOllama
 
 from kokoa.config import Config
 from kokoa.knowledge import build_knowledge_base
-from kokoa.agents.theorist import create_theorist_node
-from kokoa.agents.engineer import create_engineer_node
-from kokoa.agents.simulator import simulator_node
-from kokoa.agents.analyst import create_analyst_node
+from kokoa.agents.scientist import create_scientist_node
+from kokoa.agents.code_agent import create_code_agent_node
+from kokoa.agents.archivist import create_archivist_node
 from kokoa.graph import build_workflow, run_experiment, visualize
 
 
@@ -30,26 +40,30 @@ def main():
     parser.add_argument("--visualize", action="store_true", help="Visualize graph structure")
     args = parser.parse_args()
     
-    print("🔧 KOKOA 초기화 중...")
+    print("🔧 Initializing KOKOA...")
+    print(f"   Model: {Config.MODEL_NAME}")
+    print(f"   Memory Write: {Config.can_write_memory()}")
     
     llm = ChatOllama(
         model=Config.MODEL_NAME,
         temperature=Config.TEMPERATURE
     )
-    print(f"   ✅ LLM: {Config.MODEL_NAME}")
+    print(f"   ✅ LLM ready")
     
     retriever = build_knowledge_base(force_rebuild=args.rebuild_kb)
-    print(f"   ✅ Knowledge Base 준비 완료")
+    print(f"   ✅ Knowledge Base ready")
     
-    theorist = create_theorist_node(retriever, llm)
-    engineer = create_engineer_node(llm)
-    analyst = create_analyst_node(llm)
+    scientist = create_scientist_node(retriever, llm)
+    code_agent = create_code_agent_node(llm)
+    archivist = create_archivist_node()
     
-    app = build_workflow(theorist, engineer, simulator_node, analyst)
-    print("   ✅ 워크플로우 빌드 완료")
+    app = build_workflow(scientist, code_agent, archivist)
+    print("   ✅ Workflow built")
+    print(f"       Scientist → CodeAgent → Archivist")
     
     if args.visualize:
-        visualize(app)
+        from kokoa.graph import save_graph_png
+        save_graph_png(app, ".")
         return
     
     if args.interactive:
@@ -59,7 +73,7 @@ def main():
         print("=" * 60)
         
         while True:
-            goal = input("\n🎯 연구 목표 입력: ").strip()
+            goal = input("\n🎯 Research Goal: ").strip()
             if goal.lower() == 'quit':
                 break
             if not goal:
@@ -75,7 +89,7 @@ def main():
         Target: Predict conductivity = 1.97e-6 S/cm.
         """.strip()
         
-        print("\n기본 목표 사용:")
+        print(f"\nUsing default goal:")
         print(default_goal)
         
         run_experiment(app, default_goal)
