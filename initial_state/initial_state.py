@@ -99,14 +99,14 @@ class KMCSimulator:
     def calculate_properties(self):
         if self.current_time == 0:
             return 0, 0
-        msd = np.mean([np.sum((p['current'] - p['start'])**2) for p in self.particle_positions.values()])
-        D = msd / (6 * self.current_time) * 1e-16  # cm^2/s
-        n = self.num_particles / (self.params['volume'] * 1e-24)  # ions/cm^3
-        sigma = (n * (1.602e-19)**2 * D) / (1.38e-23 * self.params['T'])  # S/cm
+        msd = np.mean([np.sum((p['current'] - p['start'])**2) for p in self.particle_positions.values()]) # Mean Square Displacement (Å^2)
+        D = msd / (6 * self.current_time) * 1e-16  # Diffusivity (cm^2/s)
+        n = self.num_particles / (self.params['volume'] * 1e-24)  # Ion concentration (ions/cm^3)
+        sigma = (n * (1.602e-19)**2 * D) / (1.38e-23 * self.params['T'])  # Nernst-Einstein Equation: σ = (n*e^2*D)/(k*T) (S/cm)
         return msd, sigma
 
 # === 4. Run Simulation ===
-sim_params = {'T': 300, 'E_a': 0.28, 'nu': 1e13, 'volume': structure.volume}
+sim_params = {'T': 298, 'E_a': 0.30, 'nu': 1e13, 'volume': structure.volume}
 sim = KMCSimulator(structure, adj_list, initial_sites, sim_params)
 
 target_time = 5e-9  # 5ns (DO NOT MODIFY)
