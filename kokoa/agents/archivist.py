@@ -22,6 +22,10 @@ def archivist_node(state: AgentState) -> dict:
     iteration = state.get("iteration_count", 0)
     research_log = state.get("research_log", [])
     
+    assumptions_checklist = state.get("assumptions_checklist", [])
+    current_focus = state.get("current_focus_assumption")
+    discovered_gaps = state.get("discovered_gaps", [])
+    
     archived_items = []
     
     if hypothesis:
@@ -39,6 +43,14 @@ def archivist_node(state: AgentState) -> dict:
         if not result.is_success and result.error_message:
             _save_insight(result, hypothesis, run_dir, iteration)
             archived_items.append("insight")
+    
+    if current_focus and assumptions_checklist:
+        _save_assumption_analysis(assumptions_checklist, current_focus, run_dir, iteration)
+        archived_items.append("assumption")
+    
+    if discovered_gaps:
+        _save_discovered_gaps(discovered_gaps, run_dir, iteration)
+        archived_items.append("discovered_gaps")
     
     if archived_items:
         print(f"   Archived: {', '.join(archived_items)}")
@@ -164,6 +176,69 @@ Timestamp: {datetime.now().isoformat()}
     
     if saved:
         print(f"   → Saved failure insight to 'insights'")
+
+
+def _save_assumption_analysis(checklist: list, focus_id: str, run_dir: str, iteration: int):
+    """Save assumption analysis to memory"""
+    from kokoa.memory import save_to_memory
+    
+    focused = None
+    for a in checklist:
+        if a["id"] == focus_id:
+            focused = a
+            break
+    
+    if not focused:
+        return
+    
+    content = f"""
+[Assumption Analysis - Iteration {iteration}]
+ID: {focused['id']}
+Name: {focused['name']}
+Status: {focused['status']}
+Reason to Relax: {focused.get('reason_to_relax', 'N/A')}
+Physical Reality: {focused.get('physical_reality', 'N/A')}
+Implementation Plan: {focused.get('implementation_plan', 'N/A')}
+Timestamp: {datetime.now().isoformat()}
+""".strip()
+    
+    saved = save_to_memory(
+        content=content,
+        collection="assumption_reviews",
+        metadata={
+            "assumption_id": focus_id,
+            "iteration": iteration,
+            "status": focused["status"]
+        },
+        run_dir=run_dir
+    )
+    
+    if saved:
+        print(f"   → Saved assumption [{focus_id}] analysis to 'assumption_reviews'")
+
+
+def _save_discovered_gaps(gaps: list, run_dir: str, iteration: int):
+    """Save newly discovered gaps to insights"""
+    from kokoa.memory import save_to_memory
+    
+    for i, gap in enumerate(gaps):
+        content = f"""
+[Discovered Gap - Iteration {iteration}]
+Gap #{i+1}: {gap}
+Timestamp: {datetime.now().isoformat()}
+""".strip()
+        
+        save_to_memory(
+            content=content,
+            collection="insights",
+            metadata={
+                "type": "discovered_gap",
+                "iteration": iteration
+            },
+            run_dir=run_dir
+        )
+    
+    print(f"   → Saved {len(gaps)} discovered gap(s) to 'insights'")
 
 
 def create_archivist_node():
