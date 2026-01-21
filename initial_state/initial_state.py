@@ -100,7 +100,7 @@ class KMCSimulator:
         if self.current_time == 0:
             return 0, 0
         msd = np.mean([np.sum((p['current'] - p['start'])**2) for p in self.particle_positions.values()]) # Mean Square Displacement (Å^2)
-        D = msd / (6 * self.current_time) * 1e-16  # Diffusivity (cm^2/s)
+        D = msd / (6 * self.current_time) * 1e-16  # Diffusivity (cm^2/s), MSD(t)=6Dt
         n = self.num_particles / (self.params['volume'] * 1e-24)  # Ion concentration (ions/cm^3)
         sigma = (n * (1.602e-19)**2 * D) / (1.38e-23 * self.params['T'])  # Nernst-Einstein Equation: σ = (n*e^2*D)/(k*T) (S/cm)
         return msd, sigma
