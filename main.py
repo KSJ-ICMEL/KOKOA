@@ -12,6 +12,7 @@ Main execution script
 Usage:
     python main.py --goal "Maximize ionic conductivity in LLZO"
     python main.py --interactive
+    python main.py -m gemini-2.5-pro --goal "..."
 """
 
 import argparse
@@ -22,8 +23,6 @@ try:
 except ImportError:
     pass
 
-from langchain_ollama import ChatOllama
-
 from kokoa.config import Config
 from kokoa.knowledge import build_knowledge_base
 from kokoa.agents.scientist import create_scientist_node
@@ -32,23 +31,42 @@ from kokoa.agents.archivist import create_archivist_node
 from kokoa.graph import build_workflow, run_experiment, visualize
 
 
+def create_llm(model_name: str):
+    """Create LLM based on model name"""
+    if model_name.startswith("gemini"):
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        return ChatGoogleGenerativeAI(
+            model=model_name,
+            temperature=Config.TEMPERATURE
+        )
+    else:
+        from langchain_ollama import ChatOllama
+        return ChatOllama(
+            model=model_name,
+            temperature=Config.TEMPERATURE
+        )
+
+
 def main():
     parser = argparse.ArgumentParser(description="KOKOA Agent System")
+    parser.add_argument("-m", "--model", type=str, 
+                        choices=Config.SUPPORTED_MODELS,
+                        default=Config.MODEL_NAME,
+                        help=f"Model to use. Choices: {Config.SUPPORTED_MODELS}")
     parser.add_argument("--goal", type=str, help="Research goal")
     parser.add_argument("--interactive", action="store_true", help="Interactive mode")
     parser.add_argument("--rebuild-kb", action="store_true", help="Force rebuild knowledge base")
     parser.add_argument("--visualize", action="store_true", help="Visualize graph structure")
     args = parser.parse_args()
     
-    print("🔧 Initializing KOKOA...")
+    Config.set_model(args.model)
+    
+    print("Initializing KOKOA...")
     print(f"   Model: {Config.MODEL_NAME}")
     print(f"   Memory Write: {Config.can_write_memory()}")
     
-    llm = ChatOllama(
-        model=Config.MODEL_NAME,
-        temperature=Config.TEMPERATURE
-    )
-    print(f"   ✅ LLM ready")
+    llm = create_llm(Config.MODEL_NAME)
+    print(f"   LLM ready")
     
     retriever = build_knowledge_base(force_rebuild=args.rebuild_kb)
     print(f"   ✅ Knowledge Base ready")

@@ -23,6 +23,11 @@ def get_device():
 
 class Config:
     MODEL_NAME = "gpt-oss:120b"
+    SUPPORTED_MODELS = [
+        "gpt-oss:120b",
+        "gemini-2.5-pro",
+        "gemini-3-flash-preview",
+    ]
     TEMPERATURE = 0.1
     
     EMBEDDING_MODEL = "BAAI/bge-m3"
@@ -66,5 +71,12 @@ class Config:
         config.PERSIST_DIRECTORY = os.getenv("KOKOA_CHROMA_DIR", config.PERSIST_DIRECTORY)
         config.EMBEDDING_DEVICE = os.getenv("KOKOA_DEVICE", config.EMBEDDING_DEVICE)
         return config
+    
+    @classmethod
+    def set_model(cls, model_name: str):
+        if model_name in cls.SUPPORTED_MODELS:
+            cls.MODEL_NAME = model_name
+        else:
+            raise ValueError(f"Unsupported model: {model_name}. Choose from: {cls.SUPPORTED_MODELS}")
 
 
