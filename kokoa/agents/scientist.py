@@ -304,11 +304,7 @@ Error: {sim_output.error_message or 'None'}
     else:
         sim_result_text = "No previous simulation result (first iteration)."
     
-    print("   Searching knowledge...")
-    query = f"{state['goal']} kMC ionic conductivity solid electrolyte simulation"
-    knowledge_context = _search_knowledge(query, run_dir, knowledge_retriever)
-    
-    print("   Reviewing assumptions...")
+    print("   [1/3] Reviewing assumptions...")
     assumptions_checklist = state.get("assumptions_checklist", [])
     discovered_gaps = state.get("discovered_gaps", [])
     active_assumptions = get_active_assumptions(assumptions_checklist)
@@ -316,9 +312,11 @@ Error: {sim_output.error_message or 'None'}
     assumption_review = {}
     assumption_to_relax = None
     implementation_plan = ""
+    assumption_context = "Continue improving the simulation."
     
     if active_assumptions:
-        assumption_review = _review_assumptions(state, knowledge_context, llm)
+        initial_context = format_assumptions_for_prompt(assumptions_checklist)
+        assumption_review = _review_assumptions(state, initial_context, llm)
         selected_id = assumption_review.get("selected_assumption_id", "")
         implementation_plan = assumption_review.get("implementation_plan", "")
         
@@ -334,6 +332,8 @@ Error: {sim_output.error_message or 'None'}
                     break
     
     if assumption_to_relax:
+        query = f"{assumption_to_relax['name']} kMC simulation implementation {assumption_to_relax['description'][:100]}"
+        
         assumptions_checklist = relax_assumption(
             assumptions_checklist,
             assumption_to_relax["id"],
@@ -349,8 +349,13 @@ Reason: {assumption_review.get('reason_to_relax', '')}
 Physical Reality: {assumption_review.get('physical_reality', '')}
 """
     else:
-        assumption_context = "Continue improving the simulation."
+        query = f"{state['goal']} kMC ionic conductivity solid electrolyte simulation"
         implementation_plan = "General optimization"
+    
+    print(f"   [2/3] Searching knowledge (query: {query[:60]}...)")
+    knowledge_context = _search_knowledge(query, run_dir, knowledge_retriever)
+    
+    print("   [3/3] Generating code...")
     
     prompt_vars = {
         "goal": state["goal"],
@@ -362,7 +367,6 @@ Physical Reality: {assumption_review.get('physical_reality', '')}
         "implementation_plan": implementation_plan
     }
     
-    print("   Generating improved code...")
     full_response = ""
     for chunk in llm.stream(SCIENTIST_PROMPT.format_messages(**prompt_vars)):
         content = chunk.content if hasattr(chunk, 'content') else str(chunk)
