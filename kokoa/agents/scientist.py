@@ -47,8 +47,9 @@ class ScientistOutput(BaseModel):
     python_code: str = Field(description="Complete kMC simulation code")
 
 
-ASSUMPTION_REVIEW_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """You are analyzing kMC simulation assumptions to determine which should be relaxed.
+# === Assumption Review Prompt Components ===
+_ASSUMPTION_REVIEW_SYSTEM = """\
+You are analyzing kMC simulation assumptions to determine which should be relaxed.
 
 **SIMULATION STATUS:**
 - Target: 1.97e-6 S/cm (experimental LLZO conductivity)
@@ -61,13 +62,19 @@ ASSUMPTION_REVIEW_PROMPT = ChatPromptTemplate.from_messages([
 3. Explain the physical reality and how to implement the fix
 4. If you discover a NEW gap not in the checklist, set discovered_gap field
 
-{format_instructions}"""),
-    ("user", """{assumptions_checklist}
+{format_instructions}"""
+
+_ASSUMPTION_REVIEW_USER = """\
+{assumptions_checklist}
 
 [Previous Error Message]:
 {error_message}
 
-Select ONE assumption to relax and explain.""")
+Select ONE assumption to relax and explain."""
+
+ASSUMPTION_REVIEW_PROMPT = ChatPromptTemplate.from_messages([
+    ("system", _ASSUMPTION_REVIEW_SYSTEM),
+    ("user", _ASSUMPTION_REVIEW_USER),
 ])
 
 
