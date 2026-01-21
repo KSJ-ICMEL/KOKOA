@@ -10,6 +10,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from kokoa.config import Config
+from kokoa.assumptions_config import AssumptionItem, BASE_ASSUMPTIONS
 
 
 class SimulationResult(BaseModel):
@@ -24,7 +25,7 @@ class AgentState(TypedDict):
     goal: str
     hypothesis: str
     python_code: str
-    last_valid_code: str  # For rollback support
+    last_valid_code: str
     
     simulation_output: Optional[SimulationResult]
     current_error_rate: Optional[float]
@@ -39,6 +40,10 @@ class AgentState(TypedDict):
     research_query: Optional[str]
     knowledge_gap: Optional[str]
     research_attempts: int
+    
+    assumptions_checklist: List[AssumptionItem]
+    current_focus_assumption: Optional[str]
+    discovered_gaps: List[str]
     
     run_id: str
     run_dir: str
@@ -107,6 +112,9 @@ def create_initial_state(goal: str, run_id: str = None) -> AgentState:
     initial_code = load_initial_code()
     initial_result = load_initial_result()
     
+    import copy
+    assumptions = copy.deepcopy(BASE_ASSUMPTIONS)
+    
     return {
         "goal": goal,
         "hypothesis": "",
@@ -122,6 +130,9 @@ def create_initial_state(goal: str, run_id: str = None) -> AgentState:
         "research_query": None,
         "knowledge_gap": None,
         "research_attempts": 0,
+        "assumptions_checklist": assumptions,
+        "current_focus_assumption": None,
+        "discovered_gaps": [],
         "run_id": run_id,
         "run_dir": run_dir,
     }
