@@ -9,15 +9,12 @@ Theory development + External knowledge search + Assumption review
 """
 
 import re
-import json
-from typing import Optional, List, Dict
+from typing import Optional, List
 
+from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import PydanticOutputParser
 from langchain_community.document_loaders import ArxivLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_core.documents import Document
 
 from kokoa.config import Config
 from kokoa.state import AgentState
@@ -27,6 +24,27 @@ from kokoa.assumptions_config import (
     relax_assumption,
     get_active_assumptions,
 )
+
+
+class AssumptionReviewOutput(BaseModel):
+    analysis: str = Field(description="Brief analysis of error source")
+    selected_assumption_id: str = Field(description="A1-A10 or DISCOVERED")
+    reason_to_relax: str = Field(description="Why this assumption should be relaxed")
+    physical_reality: str = Field(description="What is the real physics")
+    implementation_plan: str = Field(description="How to implement in kMC code")
+    expected_improvement: str = Field(description="Expected effect on conductivity")
+    discovered_gap: Optional[str] = Field(None, description="New gap not in checklist")
+
+
+class HypothesisOutput(BaseModel):
+    title: str = Field(description="One-line improvement title")
+    mechanism: str = Field(description="Scientific explanation of assumption relaxation")
+    key_changes: List[str] = Field(description="List of key changes made")
+
+
+class ScientistOutput(BaseModel):
+    hypothesis: HypothesisOutput
+    python_code: str = Field(description="Complete kMC simulation code")
 
 
 ASSUMPTION_REVIEW_PROMPT = ChatPromptTemplate.from_messages([
@@ -41,27 +59,15 @@ ASSUMPTION_REVIEW_PROMPT = ChatPromptTemplate.from_messages([
 1. Analyze why the current simulation deviates from reality
 2. Identify which assumption most urgently needs to be relaxed
 3. Explain the physical reality and how to implement the fix
-4. If you discover a NEW gap not in the checklist, describe it as DISCOVERED_GAP
+4. If you discover a NEW gap not in the checklist, set discovered_gap field
 
-**OUTPUT FORMAT (JSON only):**
-{{
-    "analysis": "Brief analysis of error source",
-    "selected_assumption_id": "A1-A10 or DISCOVERED",
-    "reason_to_relax": "Why this assumption should be relaxed",
-    "physical_reality": "What is the real physics",
-    "implementation_plan": "How to implement in kMC code",
-    "expected_improvement": "Expected effect on conductivity",
-    "discovered_gap": "(Optional) New gap not in checklist"
-}}"""),
+{format_instructions}"""),
     ("user", """{assumptions_checklist}
 
 [Previous Error Message]:
 {error_message}
 
-[External Knowledge]:
-{knowledge_context}
-
-Select ONE assumption to relax and explain. Output JSON only.""")
+Select ONE assumption to relax and explain.""")
 ])
 
 
@@ -88,16 +94,9 @@ You are RELAXING the following assumption to make the simulation more realistic:
 - Implement the assumption relaxation as specified
 - Make ONE focused improvement
 - The CodeAgent will fix any Python bugs later
+- python_code field should contain ONLY the raw Python code, no markdown code blocks
 
-**OUTPUT FORMAT (JSON only):**
-{{
-    "hypothesis": {{
-        "title": "[A#] One-line improvement title",
-        "mechanism": "Scientific explanation of assumption relaxation",
-        "key_changes": ["change1", "change2"]
-    }},
-    "python_code": "```python\\nimport numpy as np\\n...complete code here...\\n```"
-}}"""),
+{format_instructions}"""),
     ("user", """[Goal]: {goal}
 
 [Current Simulation Code]:
@@ -111,7 +110,7 @@ You are RELAXING the following assumption to make the simulation more realistic:
 [Knowledge Context]:
 {knowledge_context}
 
-Generate improved kMC simulation code that relaxes the target assumption. Output JSON only.""")
+Generate improved kMC simulation code that relaxes the target assumption.""")
 ])
 
 
@@ -194,44 +193,12 @@ def _search_knowledge(query: str, run_dir: str, knowledge_retriever) -> str:
     return "\n\n".join(context_parts) if context_parts else "No external knowledge found."
 
 
-def _parse_response(raw: str) -> dict:
-    """Parse JSON response from LLM"""
-    cleaned = raw.replace("```json", "").replace("```", "").strip()
-    
-    try:
-        return json.loads(cleaned)
-    except:
-        pass
-    
-    match = re.search(r'\{.*\}', cleaned, re.DOTALL)
-    if match:
-        try:
-            return json.loads(match.group())
-        except:
-            pass
-    
-    return {"hypothesis": {"title": "Continue optimization"}, "python_code": ""}
+assumption_review_parser = PydanticOutputParser(pydantic_object=AssumptionReviewOutput)
+scientist_output_parser = PydanticOutputParser(pydantic_object=ScientistOutput)
 
 
-def _extract_code(result: dict) -> str:
-    """Extract Python code from response"""
-    code = result.get("python_code", "")
-    
-    if "```python" in code:
-        match = re.search(r'```python\s*(.*?)\s*```', code, re.DOTALL)
-        if match:
-            return match.group(1).strip()
-    
-    if "```" in code:
-        match = re.search(r'```\s*(.*?)\s*```', code, re.DOTALL)
-        if match:
-            return match.group(1).strip()
-    
-    return code.strip()
-
-
-def _review_assumptions(state: AgentState, knowledge_context: str, llm) -> dict:
-    """Review assumptions and select one to relax"""
+def _review_assumptions(state: AgentState, llm) -> AssumptionReviewOutput:
+    """Review assumptions and select one to relax using PydanticOutputParser"""
     checklist = state.get("assumptions_checklist", [])
     sim_output = state.get("simulation_output")
     
@@ -240,20 +207,20 @@ def _review_assumptions(state: AgentState, knowledge_context: str, llm) -> dict:
     error_rate = abs(target - current_conductivity) / target * 100 if current_conductivity else 100.0
     error_message = sim_output.error_message if sim_output else "No previous result"
     
-    prompt_vars = {
+    prompt_with_format = ASSUMPTION_REVIEW_PROMPT.partial(
+        format_instructions=assumption_review_parser.get_format_instructions()
+    )
+    
+    chain = prompt_with_format | llm | assumption_review_parser
+    
+    result = chain.invoke({
         "assumptions_checklist": format_assumptions_for_prompt(checklist),
         "current_conductivity": f"{current_conductivity:.2e}" if current_conductivity else "N/A",
         "error_rate": f"{error_rate:.1f}",
         "error_message": error_message or "No error",
-        "knowledge_context": knowledge_context[:2000]
-    }
+    })
     
-    full_response = ""
-    for chunk in llm.stream(ASSUMPTION_REVIEW_PROMPT.format_messages(**prompt_vars)):
-        content = chunk.content if hasattr(chunk, 'content') else str(chunk)
-        full_response += content
-    
-    return _parse_response(full_response)
+    return result
 
 
 def scientist_node(state: AgentState, knowledge_retriever, llm) -> dict:
@@ -309,19 +276,18 @@ Error: {sim_output.error_message or 'None'}
     discovered_gaps = state.get("discovered_gaps", [])
     active_assumptions = get_active_assumptions(assumptions_checklist)
     
-    assumption_review = {}
+    assumption_review = None
     assumption_to_relax = None
     implementation_plan = ""
     assumption_context = "Continue improving the simulation."
     
     if active_assumptions:
-        initial_context = format_assumptions_for_prompt(assumptions_checklist)
-        assumption_review = _review_assumptions(state, initial_context, llm)
-        selected_id = assumption_review.get("selected_assumption_id", "")
-        implementation_plan = assumption_review.get("implementation_plan", "")
+        assumption_review = _review_assumptions(state, llm)
+        selected_id = assumption_review.selected_assumption_id
+        implementation_plan = assumption_review.implementation_plan
         
-        if selected_id == "DISCOVERED" and assumption_review.get("discovered_gap"):
-            new_gap = assumption_review["discovered_gap"]
+        if selected_id == "DISCOVERED" and assumption_review.discovered_gap:
+            new_gap = assumption_review.discovered_gap
             discovered_gaps.append(new_gap)
             print(f"   [!] Discovered new gap: {new_gap[:80]}...")
         else:
@@ -337,16 +303,16 @@ Error: {sim_output.error_message or 'None'}
         assumptions_checklist = relax_assumption(
             assumptions_checklist,
             assumption_to_relax["id"],
-            assumption_review.get("reason_to_relax", ""),
-            assumption_review.get("physical_reality", ""),
+            assumption_review.reason_to_relax if assumption_review else "",
+            assumption_review.physical_reality if assumption_review else "",
             implementation_plan,
             iteration
         )
         
         assumption_context = f"""
 [{assumption_to_relax['id']}] {assumption_to_relax['name']}
-Reason: {assumption_review.get('reason_to_relax', '')}
-Physical Reality: {assumption_review.get('physical_reality', '')}
+Reason: {assumption_review.reason_to_relax if assumption_review else ''}
+Physical Reality: {assumption_review.physical_reality if assumption_review else ''}
 """
     else:
         query = f"{state['goal']} kMC ionic conductivity solid electrolyte simulation"
@@ -357,40 +323,42 @@ Physical Reality: {assumption_review.get('physical_reality', '')}
     
     print("   [3/3] Generating code...")
     
-    prompt_vars = {
-        "goal": state["goal"],
-        "current_code": current_code[:3000] if current_code else "# No existing code",
-        "simulation_result": sim_result_text,
-        "knowledge_context": knowledge_context[:4000],
-        "simulation_time": Config.SIMULATION_TIME,
-        "assumption_being_relaxed": assumption_context,
-        "implementation_plan": implementation_plan
-    }
+    prompt_with_format = SCIENTIST_PROMPT.partial(
+        format_instructions=scientist_output_parser.get_format_instructions()
+    )
     
-    full_response = ""
-    for chunk in llm.stream(SCIENTIST_PROMPT.format_messages(**prompt_vars)):
-        content = chunk.content if hasattr(chunk, 'content') else str(chunk)
-        print(content, end="", flush=True)
-        full_response += content
-    print("\n")
+    chain = prompt_with_format | llm | scientist_output_parser
     
-    result = _parse_response(full_response)
-    
-    hypothesis_data = result.get("hypothesis", {})
-    if isinstance(hypothesis_data, dict):
-        hypothesis_text = f"""## {hypothesis_data.get('title', 'Optimization')}
-**Mechanism:** {hypothesis_data.get('mechanism', 'N/A')}
-**Key Changes:** {', '.join(hypothesis_data.get('key_changes', []))}"""
-    else:
-        hypothesis_text = str(hypothesis_data)
-    
-    python_code = _extract_code(result)
+    try:
+        result: ScientistOutput = chain.invoke({
+            "goal": state["goal"],
+            "current_code": current_code[:3000] if current_code else "# No existing code",
+            "simulation_result": sim_result_text,
+            "knowledge_context": knowledge_context[:4000],
+            "simulation_time": Config.SIMULATION_TIME,
+            "assumption_being_relaxed": assumption_context,
+            "implementation_plan": implementation_plan
+        })
+        
+        hypothesis_text = f"""## {result.hypothesis.title}
+**Mechanism:** {result.hypothesis.mechanism}
+**Key Changes:** {', '.join(result.hypothesis.key_changes)}"""
+        
+        python_code = result.python_code.strip()
+        if python_code.startswith("```"):
+            python_code = re.sub(r'^```python?\s*', '', python_code)
+            python_code = re.sub(r'\s*```$', '', python_code)
+        
+        print(f"   Generated {len(python_code)} bytes of code")
+        
+    except Exception as e:
+        print(f"   [Warning] Output parsing failed: {e}")
+        hypothesis_text = "Continue optimization"
+        python_code = current_code
     
     if not python_code:
         python_code = current_code
         print("   [Warning] No code generated, keeping previous code")
-    else:
-        print(f"   Generated {len(python_code)} bytes of code")
     
     focus_assumption_id = assumption_to_relax["id"] if assumption_to_relax else None
     
@@ -402,7 +370,7 @@ Physical Reality: {assumption_review.get('physical_reality', '')}
         "assumptions_checklist": assumptions_checklist,
         "current_focus_assumption": focus_assumption_id,
         "discovered_gaps": discovered_gaps,
-        "research_log": research_log + [f"Scientist: {hypothesis_data.get('title', 'Generated code')}"]
+        "research_log": research_log + [f"Scientist: {result.hypothesis.title if 'result' in dir() else 'Generated code'}"]
     }
 
 
