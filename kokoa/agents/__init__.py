@@ -1,18 +1,24 @@
 """
 KOKOA Agents Package
+====================
+3-Agent Architecture:
+- Scientist: Entry point, knowledge search, code generation, END decision
+- CodeAgent: Execution + debugging
+- Archivist: Knowledge archiving
 """
 
-from kokoa.agents.theorist import theorist_node, create_theorist_node
-from kokoa.agents.engineer import engineer_node
-from kokoa.agents.simulator import simulator_node
-from kokoa.agents.analyst import analyst_node
-from kokoa.agents.researcher import researcher_node
+from kokoa.agents.scientist import scientist_node, create_scientist_node
+from kokoa.agents.code_agent import code_agent_node, create_code_agent_node
+from kokoa.agents.archivist import archivist_node, create_archivist_node
 
 __all__ = [
-    "theorist_node",
-    "create_theorist_node",
-    "engineer_node",
-    "simulator_node",
-    "analyst_node",
-    "researcher_node",
+    # Scientist (Theorist + Researcher merged)
+    "scientist_node",
+    "create_scientist_node",
+    # Code Agent (Engineer + Simulator merged)
+    "code_agent_node",
+    "create_code_agent_node",
+    # Archivist (Analyst merged)
+    "archivist_node",
+    "create_archivist_node",
 ]
