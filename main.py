@@ -51,8 +51,8 @@ def main():
     parser = argparse.ArgumentParser(description="KOKOA Agent System")
     parser.add_argument("-m", "--model", type=str, 
                         choices=Config.SUPPORTED_MODELS,
-                        default=Config.MODEL_NAME,
-                        help=f"Model to use. Choices: {Config.SUPPORTED_MODELS}")
+                        required=True,
+                        help=f"Model to use (required). Choices: {Config.SUPPORTED_MODELS}")
     parser.add_argument("--goal", type=str, help="Research goal")
     parser.add_argument("--interactive", action="store_true", help="Interactive mode")
     parser.add_argument("--rebuild-kb", action="store_true", help="Force rebuild knowledge base")
