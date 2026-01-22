@@ -22,7 +22,7 @@ def get_device():
 
 
 class Config:
-    MODEL_NAME = "gpt-oss:120b"
+    MODEL_NAME = "gemini-3-flash-preview"
     SUPPORTED_MODELS = [
         "gpt-oss:120b",
         "gemini-2.5-pro",
