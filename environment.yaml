@@ -185,8 +185,6 @@ dependencies:
       - tenacity==9.1.2
       - threadpoolctl==3.6.0
       - tokenizers==0.22.2
-      - torch==2.9.1+cu126
-      - torchvision==0.24.1+cu126
       - tqdm==4.67.1
       - transformers==4.57.3
       - typer==0.21.0
