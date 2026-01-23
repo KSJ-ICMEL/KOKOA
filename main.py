@@ -105,7 +105,7 @@ def main():
         default_goal = """
         Objective: Reduce the gap between simulation and reality by progressively relaxing idealized assumptions in the kMC model.
         Approach: Add realistic physical factors (site energies, correlation effects, lattice dynamics) and governing equations to capture real ionic transport behavior.
-        Validation: Experimental conductivity = 4.0e-4 S/cm. The simulation value should naturally approach this target as physical realism improves.
+        Validation: Experimental bulk Li-ion conductivity = 1.63e-6 S/cm. The simulation value should naturally approach this target as physical realism improves.
         """.strip()
         
         print(f"\nUsing default goal:")

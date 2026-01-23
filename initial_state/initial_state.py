@@ -5,13 +5,13 @@ import os
 
 # === 1. Structure Loading ===
 # Use absolute path based on this file's location
-cif_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Li6.06Al0.20La3Zr2O12.cif")
+cif_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "wyu.cif")
 if not os.path.exists(cif_path):
     raise FileNotFoundError(f"CIF file not found: {cif_path}")
 
 structure = Structure.from_file(cif_path)
 
-N = 3  # Supercell expansion
+N = 4  # Supercell expansion
 structure.make_supercell([N, N, N])
 print(f"Supercell: {N}x{N}x{N}, Total atoms: {len(structure)}")
 
