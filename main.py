@@ -103,8 +103,9 @@ def main():
     
     else:
         default_goal = """
-        Objective: Optimize the ionic conductivity of a 3D lattice model representing a solid electrolyte.
-        Target: Predict conductivity = 1.97e-6 S/cm.
+        Objective: Reduce the gap between simulation and reality by progressively relaxing idealized assumptions in the kMC model.
+        Approach: Add realistic physical factors (site energies, correlation effects, lattice dynamics) and governing equations to capture real ionic transport behavior.
+        Validation: Experimental conductivity = 4.0e-4 S/cm. The simulation value should naturally approach this target as physical realism improves.
         """.strip()
         
         print(f"\nUsing default goal:")
