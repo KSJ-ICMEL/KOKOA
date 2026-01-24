@@ -1,11 +1,14 @@
-"""kMC Simulation for Li-ion Conductivity in Solid Electrolyte"""
+"""kMC Simulation for Li-ion Conductivity in Solid Electrolyte
+   - Li sites: occupied (state=1)
+   - He sites: vacancy placeholder (state=0)
+   - Li can hop to He sites (vacancy migration)
+"""
 import numpy as np
 from pymatgen.core import Structure
 import os
 
 # === 1. Structure Loading ===
-# Use absolute path based on this file's location
-cif_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "wyu.cif")
+cif_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "LLZO_with_vacancy.cif")
 if not os.path.exists(cif_path):
     raise FileNotFoundError(f"CIF file not found: {cif_path}")
 
@@ -15,33 +18,57 @@ N = 4  # Supercell expansion
 structure.make_supercell([N, N, N])
 print(f"Supercell: {N}x{N}x{N}, Total atoms: {len(structure)}")
 
-# Initialize Li sites with occupancy probability
+# === 2. Initialize Li and He(vacancy) sites ===
 initial_sites = []
-for site in structure:
-    if "Li" in [s.symbol for s in site.species.elements]:
-        prob = site.species.get("Li", 0)
-        state = 1 if np.random.rand() < prob else 0
-        initial_sites.append({"coords": site.frac_coords, "state": state})
+site_to_idx = {}  # Map structure index to initial_sites index
 
-print(f"Li sites initialized: {len(initial_sites)}")
+li_count = 0
+he_count = 0
 
-# === 2. Build Adjacency Graph ===
+for idx, site in enumerate(structure):
+    element = site.species.elements[0].symbol
+    if element == "Li":
+        # Li site: occupied (state=1)
+        initial_sites.append({"coords": site.frac_coords, "state": 1, "type": "Li"})
+        site_to_idx[idx] = len(initial_sites) - 1
+        li_count += 1
+    elif element == "He":
+        # He site: vacancy (state=0)
+        initial_sites.append({"coords": site.frac_coords, "state": 0, "type": "He"})
+        site_to_idx[idx] = len(initial_sites) - 1
+        he_count += 1
+
+print(f"Li sites (occupied): {li_count}")
+print(f"He sites (vacancy): {he_count}")
+print(f"Total hop sites: {len(initial_sites)}")
+
+# === 3. Build Adjacency Graph (Li-Li and Li-He connections) ===
+# adj_list uses initial_sites indices (not structure indices)
 cutoff = 4.0  # Angstrom
 neighbors_data = structure.get_all_neighbors(r=cutoff)
 adj_list = {}
 
 for i, site in enumerate(structure):
-    if "Li" not in site.species.elements[0].symbol:
+    element = site.species.elements[0].symbol
+    if element not in ["Li", "He"]:
         continue
+    
+    src_idx = site_to_idx.get(i)
+    if src_idx is None:
+        continue
+    
     neighbors = []
     for nb in neighbors_data[i]:
-        if "Li" in structure[nb.index].species.elements[0].symbol:
-            frac_diff = structure[nb.index].frac_coords - site.frac_coords + nb.image
-            cart_disp = structure.lattice.get_cartesian_coords(frac_diff)
-            neighbors.append((nb.index, cart_disp))
-    adj_list[i] = neighbors
+        nb_element = structure[nb.index].species.elements[0].symbol
+        if nb_element in ["Li", "He"]:
+            tgt_idx = site_to_idx.get(nb.index)
+            if tgt_idx is not None:
+                frac_diff = structure[nb.index].frac_coords - site.frac_coords + nb.image
+                cart_disp = structure.lattice.get_cartesian_coords(frac_diff)
+                neighbors.append((tgt_idx, cart_disp))  # Use initial_sites index
+    adj_list[src_idx] = neighbors
 
-print(f"Graph built (cutoff={cutoff}A)")
+print(f"Graph built (cutoff={cutoff}A, includes Li-He connections)")
 
 # === 3. kMC Simulator (BKL Algorithm) ===
 class KMCSimulator:
