@@ -50,11 +50,6 @@ class ScientistOutput(BaseModel):
 ASSUMPTION_REVIEW_PROMPT = ChatPromptTemplate.from_messages([
     ("system", """You are analyzing kMC simulation assumptions to determine which should be relaxed.
 
-**SIMULATION STATUS:**
-- Target: 1.97e-6 S/cm (experimental LLZO conductivity)
-- Current: {current_conductivity} S/cm
-- Error: {error_rate}%
-
 **TASK:**
 1. Analyze why the current simulation deviates from reality
 2. Identify which assumption most urgently needs to be relaxed
@@ -62,7 +57,12 @@ ASSUMPTION_REVIEW_PROMPT = ChatPromptTemplate.from_messages([
 4. If you discover a NEW gap not in the checklist, set discovered_gap field
 
 {format_instructions}"""),
-    ("user", """{assumptions_checklist}
+    ("user", """[CURRENT SIMULATION STATUS - USE THIS FOR DECISION]
+- Target: 1.97e-6 S/cm (experimental LLZO conductivity)
+- Current: {current_conductivity} S/cm
+- Error: {error_rate}% ← Focus on reducing this
+
+{assumptions_checklist}
 
 [Previous Error Message]:
 {error_message}
@@ -81,25 +81,40 @@ You are RELAXING the following assumption to make the simulation more realistic:
 **Implementation Plan:**
 {implementation_plan}
 
+**CODE MODIFICATION RULES (CRITICAL):**
+1. **PRESERVE the existing code structure** - Only modify the parts directly related to the assumption being relaxed
+2. **DO NOT change** the following (these are FIXED):
+   - CIF path loading logic (`cif_path = os.path.join(...)`)
+   - Supercell size (`N = 4`, `structure.make_supercell([N, N, N])`)
+   - Convergence logic (`sigma_history`, RSD < 5% check, 1000 samples)
+   - JSON result saving (`result = {...}`, `json.dump(...)`)
+   - Print format for final conductivity (`print(f"Conductivity: ...")`)
+   - `target_time` variable value
+3. **DO NOT remove** any existing features
+4. Make the **MINIMUM changes** necessary to implement the assumption relaxation
+5. If adding new physics, integrate it into the existing `KMCSimulator` class structure
+6. You may modify:
+   - `KMCSimulator.__init__()` to add new parameters
+   - `KMCSimulator.run_step()` to implement new hopping physics
+   - `sim_params` dictionary to add new physical parameters
+   - Add helper methods to `KMCSimulator` if needed
+
 **CODE REQUIREMENTS:**
 1. NO 'kokoa' imports - code must be standalone
-2. Use: numpy, scipy, pymatgen, matplotlib
-3. Use `_CIF_PATH` variable for CIF file (injected at runtime)
-4. target_time = {simulation_time} seconds
-5. Supercell: structure.make_supercell([3, 3, 3])
-6. Print: `print(f"Conductivity: {{val}} S/cm")`
-7. Print progress every 2000 steps
+2. Use: numpy, scipy, pymatgen (avoid adding unnecessary dependencies)
+3. Keep the existing variable names for CIF loading
+4. Print: `print(f"Conductivity: {{val}} S/cm")`
 
 **IMPORTANT:**
 - Implement the assumption relaxation as specified
-- Make ONE focused improvement
+- Make ONE focused improvement while preserving everything else
 - The CodeAgent will fix any Python bugs later
 - python_code field should contain ONLY the raw Python code, no markdown code blocks
 
 {format_instructions}"""),
     ("user", """[Goal]: {goal}
 
-[Current Simulation Code]:
+[Current Simulation Code (PRESERVE UNRELATED PARTS)]:
 ```python
 {current_code}
 ```
@@ -110,7 +125,7 @@ You are RELAXING the following assumption to make the simulation more realistic:
 [Knowledge Context]:
 {knowledge_context}
 
-Generate improved kMC simulation code that relaxes the target assumption.""")
+Generate improved kMC simulation code that relaxes ONLY the target assumption while preserving the rest of the code.""")
 ])
 
 
