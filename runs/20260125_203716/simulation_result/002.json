@@ -1,0 +1,9 @@
+{
+  "timestamp": "2026-01-25T20:38:11.531415",
+  "iteration": 2,
+  "is_success": true,
+  "conductivity": 9.7679e-06,
+  "conductivity_unit": "S/cm",
+  "error_message": null,
+  "execution_log": "[STDOUT]\nStructure loaded: 208 atoms\nLi sites initialized: 72\nGraph built (cutoff=4.0A)\nStep 100: 235.98ns, MSD=1.36A^2, sigma=0.0154mS/cm\nStep 200: 551.57ns, MSD=2.24A^2, sigma=0.0108mS/cm\nStep 300: 918.11ns, MSD=3.73A^2, sigma=0.0108mS/cm\n\n=== Simulation Complete ===\nT=298K, Time=1006.06ns\nD=6.1038e-11 cm^2/s\nConductivity: 9.7679e-06 S/cm\n\nSaved result to: C:\\Users\\sjkim\\KOKOA\\runs\\20260125_203716\\simulation\\initial_state.json\n\n[STDERR]\n"
+}
