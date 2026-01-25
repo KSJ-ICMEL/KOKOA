@@ -9,6 +9,7 @@ Collections:
 - experiments: 실험 결과 요약 (Analyst가 저장, Theorist/Engineer가 검색)
 - skills: 성공한 코드 패턴 (Analyst가 저장, Engineer가 검색)
 - insights: 배운 교훈/실패 원인 (Analyst가 저장, Theorist가 검색)
+- assumption_reviews: 가정 검증 및 완화 분석 (Archivist가 저장)
 """
 
 import os
@@ -21,7 +22,7 @@ from langchain_chroma import Chroma
 from kokoa.config import Config
 
 
-_COLLECTIONS = ["papers", "experiments", "skills", "insights"]
+_COLLECTIONS = ["papers", "experiments", "skills", "insights", "assumption_reviews"]
 _embedding_model = None
 _vector_stores: Dict[str, Chroma] = {}
 
