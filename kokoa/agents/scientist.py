@@ -362,6 +362,17 @@ Physical Reality: {assumption_review.physical_reality if assumption_review else 
     
     focus_assumption_id = assumption_to_relax["id"] if assumption_to_relax else None
     
+    focused_summary = None
+    if assumption_to_relax and assumption_review:
+        focused_summary = {
+            "id": assumption_to_relax["id"],
+            "name": assumption_to_relax["name"],
+            "status": "relaxed",
+            "reason_to_relax": assumption_review.reason_to_relax,
+            "physical_reality": assumption_review.physical_reality,
+            "implementation_plan": implementation_plan,
+        }
+    
     return {
         "status": "CONTINUE",
         "hypothesis": hypothesis_text,
@@ -369,6 +380,7 @@ Physical Reality: {assumption_review.physical_reality if assumption_review else 
         "iteration_count": iteration,
         "assumptions_checklist": assumptions_checklist,
         "current_focus_assumption": focus_assumption_id,
+        "focused_assumption_summary": focused_summary,
         "discovered_gaps": discovered_gaps,
         "research_log": research_log + [f"Scientist: {result.hypothesis.title if 'result' in dir() else 'Generated code'}"]
     }

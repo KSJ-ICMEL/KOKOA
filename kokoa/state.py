@@ -9,6 +9,15 @@ from typing import Optional, List, TypedDict
 from datetime import datetime
 from pydantic import BaseModel, Field
 
+
+class FocusedAssumptionSummary(TypedDict):
+    id: str
+    name: str
+    status: str
+    reason_to_relax: Optional[str]
+    physical_reality: Optional[str]
+    implementation_plan: Optional[str]
+
 from kokoa.config import Config
 from kokoa.assumptions_config import AssumptionItem, BASE_ASSUMPTIONS
 
@@ -43,6 +52,7 @@ class AgentState(TypedDict):
     
     assumptions_checklist: List[AssumptionItem]
     current_focus_assumption: Optional[str]
+    focused_assumption_summary: Optional[FocusedAssumptionSummary]
     discovered_gaps: List[str]
     
     run_id: str
@@ -132,6 +142,7 @@ def create_initial_state(goal: str, run_id: str = None) -> AgentState:
         "research_attempts": 0,
         "assumptions_checklist": assumptions,
         "current_focus_assumption": None,
+        "focused_assumption_summary": None,
         "discovered_gaps": [],
         "run_id": run_id,
         "run_dir": run_dir,

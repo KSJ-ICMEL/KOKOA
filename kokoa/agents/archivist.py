@@ -22,8 +22,7 @@ def archivist_node(state: AgentState) -> dict:
     iteration = state.get("iteration_count", 0)
     research_log = state.get("research_log", [])
     
-    assumptions_checklist = state.get("assumptions_checklist", [])
-    current_focus = state.get("current_focus_assumption")
+    focused_summary = state.get("focused_assumption_summary")
     discovered_gaps = state.get("discovered_gaps", [])
     
     archived_items = []
@@ -44,8 +43,8 @@ def archivist_node(state: AgentState) -> dict:
             _save_insight(result, hypothesis, run_dir, iteration)
             archived_items.append("insight")
     
-    if current_focus and assumptions_checklist:
-        _save_assumption_analysis(assumptions_checklist, current_focus, run_dir, iteration)
+    if focused_summary:
+        _save_assumption_analysis(focused_summary, run_dir, iteration)
         archived_items.append("assumption")
     
     if discovered_gaps:
@@ -178,27 +177,21 @@ Timestamp: {datetime.now().isoformat()}
         print(f"   → Saved failure insight to 'insights'")
 
 
-def _save_assumption_analysis(checklist: list, focus_id: str, run_dir: str, iteration: int):
-    """Save assumption analysis to memory"""
+def _save_assumption_analysis(summary: dict, run_dir: str, iteration: int):
+    """Save assumption analysis to memory using focused summary"""
     from kokoa.memory import save_to_memory
     
-    focused = None
-    for a in checklist:
-        if a["id"] == focus_id:
-            focused = a
-            break
-    
-    if not focused:
+    if not summary:
         return
     
     content = f"""
 [Assumption Analysis - Iteration {iteration}]
-ID: {focused['id']}
-Name: {focused['name']}
-Status: {focused['status']}
-Reason to Relax: {focused.get('reason_to_relax', 'N/A')}
-Physical Reality: {focused.get('physical_reality', 'N/A')}
-Implementation Plan: {focused.get('implementation_plan', 'N/A')}
+ID: {summary['id']}
+Name: {summary['name']}
+Status: {summary['status']}
+Reason to Relax: {summary.get('reason_to_relax', 'N/A')}
+Physical Reality: {summary.get('physical_reality', 'N/A')}
+Implementation Plan: {summary.get('implementation_plan', 'N/A')}
 Timestamp: {datetime.now().isoformat()}
 """.strip()
     
@@ -206,15 +199,15 @@ Timestamp: {datetime.now().isoformat()}
         content=content,
         collection="assumption_reviews",
         metadata={
-            "assumption_id": focus_id,
+            "assumption_id": summary['id'],
             "iteration": iteration,
-            "status": focused["status"]
+            "status": summary["status"]
         },
         run_dir=run_dir
     )
     
     if saved:
-        print(f"   → Saved assumption [{focus_id}] analysis to 'assumption_reviews'")
+        print(f"   → Saved assumption [{summary['id']}] analysis to 'assumption_reviews'")
 
 
 def _save_discovered_gaps(gaps: list, run_dir: str, iteration: int):
