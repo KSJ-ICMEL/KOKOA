@@ -2,15 +2,11 @@
 import numpy as np
 from pymatgen.core import Structure
 import os
+import json
 
 # === 1. Structure Loading ===
-# Use absolute path based on this file's location
-cif_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "LLZO.cif")
-if not os.path.exists(cif_path):
-    raise FileNotFoundError(f"CIF file not found: {cif_path}")
-
+cif_path = "LLZO.cif"
 structure = Structure.from_file(cif_path)
-
 N = 4  # Supercell expansion
 structure.make_supercell([N, N, N])
 print(f"Supercell: {N}x{N}x{N}, Total atoms: {len(structure)}")
@@ -164,4 +160,4 @@ result = {
 result_path = os.path.join(os.path.dirname(__file__), "initial_state.json")
 with open(result_path, 'w', encoding='utf-8') as f:
     json.dump(result, f, indent=2)
-print(f"\n📁 결과 저장: {result_path}")
+print(f"\nSaved result to: {result_path}")
