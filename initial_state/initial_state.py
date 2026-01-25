@@ -5,7 +5,7 @@ import os
 
 # === 1. Structure Loading ===
 # Use absolute path based on this file's location
-cif_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "wyu.cif")
+cif_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "LLZO.cif")
 if not os.path.exists(cif_path):
     raise FileNotFoundError(f"CIF file not found: {cif_path}")
 
