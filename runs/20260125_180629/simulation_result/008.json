@@ -1,0 +1,9 @@
+{
+  "timestamp": "2026-01-25T18:10:46.700412",
+  "iteration": 8,
+  "is_success": true,
+  "conductivity": null,
+  "conductivity_unit": "S/cm",
+  "error_message": null,
+  "execution_log": "[STDOUT]\nWarning: CIF file not found at 'C:\\Users\\sjkim\\KOKOA\\runs\\20260125_180629\\simulation\\LLUBA.cif'. Using a dummy structure for execution.\nSupercell: 4x4x4, Total atoms: 1\nGraph built (cutoff=4.0A)\nSimulation completed. Elapsed kMC time: 0.000e+00 s\nConductivity: None\n\n[STDERR]\n"
+}
