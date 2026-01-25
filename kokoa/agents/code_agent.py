@@ -83,7 +83,7 @@ def execute_code(code: str, run_dir: str, iteration: int, timeout: int = SIMULAT
     safe_run_dir = os.path.abspath(run_dir).replace("\\", "/")
     
     project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    cif_path = os.path.join(project_root, "Li4.47La3Zr2O12.cif").replace("\\", "/")
+    cif_path = os.path.join(project_root, "LLZO.cif").replace("\\", "/")
     safe_project_root = project_root.replace("\\", "/")
     
     wrapped_code = f'''"""
