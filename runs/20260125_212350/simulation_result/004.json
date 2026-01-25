@@ -1,0 +1,9 @@
+{
+  "timestamp": "2026-01-25T21:31:31.453139",
+  "iteration": 4,
+  "is_success": true,
+  "conductivity": 0.0,
+  "conductivity_unit": "S/cm",
+  "error_message": null,
+  "execution_log": "[STDOUT]\nSupercell: 4x4x4, Total atoms: 13312\nDeadlock - stopping\n\n=== Simulation Complete ===\nT=298K, Time=0.00ns\nD=0.0000e+00 cm^2/s\nConductivity: 0.0000e+00 S/cm\n\n[STDERR]\n"
+}

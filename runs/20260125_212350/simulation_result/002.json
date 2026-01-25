@@ -1,0 +1,9 @@
+{
+  "timestamp": "2026-01-25T21:28:23.887722",
+  "iteration": 2,
+  "is_success": false,
+  "conductivity": null,
+  "conductivity_unit": "S/cm",
+  "error_message": "Traceback (most recent call last):\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260125_212350\\simulation\\021.py\", line 174, in <module>\n    if not sim.run_step():\n           ^^^^^^^^^^^^^^\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260125_212350\\simulation\\021.py\", line 116, in run_step\n    if self.occupancy[tgt] == 0:\n       ~~~~~~~~~~~~~~^^^^^\nIndexError: index 5632 is out of bounds for axis 0 with size 4608\n",
+  "execution_log": "[STDOUT]\nSupercell: 4x4x4, Total atoms: 13312\n\n[STDERR]\nTraceback (most recent call last):\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260125_212350\\simulation\\021.py\", line 174, in <module>\n    if not sim.run_step():\n           ^^^^^^^^^^^^^^\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260125_212350\\simulation\\021.py\", line 116, in run_step\n    if self.occupancy[tgt] == 0:\n       ~~~~~~~~~~~~~~^^^^^\nIndexError: index 5632 is out of bounds for axis 0 with size 4608\n"
+}
