@@ -58,27 +58,42 @@ for i, (sp, coord) in enumerate(zip(unique_species, unique_coords)):
 
 print(f"Li-occupied 24d positions: {len(li_24d_occupied)}")
 
-# 가능한 모든 24d 좌표 (unit cell 내에서 0, 0.25, 0.5, 0.75 조합 중 일부)
-# 실제 24d 사이트는 특정 패턴만 해당
-all_24d = [
-    # 8개 Li 점유 사이트
-    (0.0, 0.0, 0.0), (0.5, 0.0, 0.25), (0.0, 0.5, 0.25), (0.5, 0.5, 0.0),
-    (0.0, 0.0, 0.5), (0.5, 0.0, 0.75), (0.0, 0.5, 0.75), (0.5, 0.5, 0.5),
-    # 16개 vacancy 사이트 (다른 패턴)
-    (0.25, 0.0, 0.125), (0.75, 0.0, 0.125), (0.0, 0.25, 0.125), (0.0, 0.75, 0.125),
-    (0.25, 0.5, 0.625), (0.75, 0.5, 0.625), (0.5, 0.25, 0.625), (0.5, 0.75, 0.625),
-    (0.25, 0.25, 0.0), (0.75, 0.75, 0.0), (0.25, 0.75, 0.5), (0.75, 0.25, 0.5),
-    (0.0, 0.25, 0.375), (0.0, 0.75, 0.375), (0.5, 0.25, 0.875), (0.5, 0.75, 0.875),
+# === 4. 16e Tetrahedral Vacancy 좌표 정의 ===
+# 논문 기반: Tetrahedral D site (24d in ideal garnet) = 8a (Li) + 16e (vacancy)
+# 8a 사이트: Li(1) 점유 (8개) - (0, 1/4, 3/8)
+# 16e 사이트: Vacancy (16개) - (x, 0, 1/4) with x = 0.375 (= 3/8)
+#
+# 16e Wyckoff position in I4_1/acd (No. 142):
+# Cubic 24d → Tetragonal 8a + 16e 관계에서 x = 3/8 = 0.375
+
+vacancy_16e = [
+    # 결정학적으로 계산된 16e tetrahedral vacancy 좌표
+    (0.000, 0.375, 0.25),
+    (0.000, 0.375, 0.75),
+    (0.000, 0.625, 0.25),
+    (0.000, 0.625, 0.75),
+    (0.125, 0.500, 0.25),
+    (0.125, 0.500, 0.75),
+    (0.375, 0.000, 0.25),
+    (0.375, 0.000, 0.75),
+    (0.500, 0.125, 0.25),
+    (0.500, 0.125, 0.75),
+    (0.500, 0.875, 0.25),
+    (0.500, 0.875, 0.75),
+    (0.625, 0.000, 0.25),
+    (0.625, 0.000, 0.75),
+    (0.875, 0.500, 0.25),
+    (0.875, 0.500, 0.75),
 ]
 
-# vacancy 좌표: Li가 점유하지 않은 24d 사이트, 다른 원소와도 겹치지 않는 위치
+# vacancy 좌표: 다른 원소와 겹치지 않는 위치만 추가
 vacancy_coords = []
-for pos in all_24d:
+for pos in vacancy_16e:
     norm = normalize_coord(pos)
     if norm not in seen_coords:
         vacancy_coords.append(pos)
 
-print(f"Vacancy positions to add: {len(vacancy_coords)}")
+print(f"16e Tetrahedral Vacancy positions to add: {len(vacancy_coords)}")
 
 # === 5. He(vacancy) 사이트 추가 ===
 he_element = Element("He")
