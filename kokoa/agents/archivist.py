@@ -89,7 +89,7 @@ def _save_experiment(state, result, hypothesis: str, run_dir: str, iteration: in
     """Save experiment result to experiments collection"""
     from kokoa.memory import save_to_memory
     
-    target = 1.97e-6
+    target = Config.TARGET_CONDUCTIVITY
     current_val = result.conductivity if result.conductivity else 0.0
     error_rate = abs(target - current_val) / target * 100 if current_val else 100.0
     
@@ -123,7 +123,7 @@ def _save_skill(python_code: str, hypothesis: str, result, run_dir: str, iterati
     """Save successful code pattern to skills collection"""
     from kokoa.memory import save_to_memory
     
-    target = 1.97e-6
+    target = Config.TARGET_CONDUCTIVITY
     error_rate = abs(target - result.conductivity) / target * 100 if result.conductivity else 100.0
     
     content = f"""

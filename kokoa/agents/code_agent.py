@@ -69,7 +69,59 @@ def validate_kmc_code(code: str) -> Tuple[bool, str]:
     return True, "OK"
 
 
-SIMULATION_TIMEOUT = 1800  # 30 minutes
+SIMULATION_TIMEOUT = Config.TIMEOUT  # Use unified timeout from config
+
+
+def _cleanup_scientist_code(code: str) -> str:
+    """Remove redundant code that is already provided by the wrapper.
+    
+    The wrapper provides: os, sys, json, numpy (as np), Structure, structure (with supercell)
+    """
+    if not code:
+        return code
+    
+    lines = code.split('\n')
+    cleaned_lines = []
+    
+    # Patterns to remove (these are already in wrapper)
+    skip_patterns = [
+        'import numpy',
+        'import np',
+        'from numpy import',
+        'import os',
+        'from os import',
+        'import sys',
+        'from sys import',
+        'import json',
+        'from json import',
+        'from pymatgen.core.structure import Structure',
+        'from pymatgen.core import Structure',
+        'from pymatgen import Structure',
+        'import traceback',
+    ]
+    
+    for line in lines:
+        stripped = line.strip()
+        
+        # Skip empty lines at the very start
+        if not cleaned_lines and not stripped:
+            continue
+        
+        # Check if this line should be skipped
+        should_skip = False
+        for pattern in skip_patterns:
+            if stripped.startswith(pattern) or pattern in stripped and ('import' in stripped or 'from' in stripped):
+                should_skip = True
+                break
+        
+        # Skip Structure.from_file lines (structure is pre-loaded)
+        if 'Structure.from_file' in stripped:
+            should_skip = True
+        
+        if not should_skip:
+            cleaned_lines.append(line)
+    
+    return '\n'.join(cleaned_lines)
 
 
 def execute_code(code: str, run_dir: str, iteration: int, timeout: int = SIMULATION_TIMEOUT) -> SimulationResult:
@@ -79,52 +131,64 @@ def execute_code(code: str, run_dir: str, iteration: int, timeout: int = SIMULAT
     script_name = f"{iteration:03d}.py"
     script_path = os.path.abspath(os.path.join(sim_dir, script_name))
     
-    indented_code = textwrap.indent(code, '    ')
-    safe_run_dir = os.path.abspath(run_dir).replace("\\", "/")
-    
+    # Copy CIF file to simulation directory (Essential for self-contained execution)
     project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    cif_path = os.path.join(project_root, "LLZO.cif").replace("\\", "/")
-    safe_project_root = project_root.replace("\\", "/")
+    source_cif = os.path.join(project_root, "initial_state", Config.CIF_FILENAME)
+    local_cif = os.path.join(sim_dir, Config.CIF_FILENAME)
     
-    wrapped_code = f'''"""
-KOKOA Simulation #{iteration}
-Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-"""
-import os, sys, traceback
+    if not os.path.exists(local_cif) and os.path.exists(source_cif):
+        import shutil
+        shutil.copy(source_cif, local_cif)
 
-_PROJECT_ROOT = "{safe_project_root}"
-_CIF_PATH = "{cif_path}"
-
-if _PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, _PROJECT_ROOT)
-
-try:
-    os.chdir('{safe_run_dir}')
-except Exception as e:
-    sys.stderr.write(f"Directory Error: {{e}}\\n")
-
-try:
-{indented_code}
-except Exception as e:
-    sys.stderr.write(f"Runtime Error: {{str(e)}}\\n")
-    traceback.print_exc(file=sys.stderr)
-    sys.exit(1)
-'''
-    
+    # Write code directly (Scientist provides full script)
     with open(script_path, "w", encoding="utf-8") as f:
-        f.write(wrapped_code)
+        f.write(code)
     
     try:
-        result = subprocess.run(
+        # Use Popen for real-time streaming output
+        process = subprocess.Popen(
             [sys.executable, script_path],
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=timeout,
-            cwd=run_dir
+            cwd=sim_dir  # Execute inside simulation dir so LLZO.cif is found
         )
         
-        stdout, stderr = result.stdout, result.stderr
-        is_success = result.returncode == 0
+        stdout_lines = []
+        stderr_lines = []
+        
+        print("\n--- Simulation Output ---")
+        
+        # Stream stdout in real-time
+        import threading
+        
+        def read_stderr():
+            for line in process.stderr:
+                stderr_lines.append(line)
+        
+        stderr_thread = threading.Thread(target=read_stderr)
+        stderr_thread.start()
+        
+        # Read stdout line by line and print immediately
+        for line in process.stdout:
+            print(line, end='', flush=True)
+            stdout_lines.append(line)
+        
+        # Wait for process to complete with timeout
+        try:
+            process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            raise
+        
+        stderr_thread.join(timeout=5)
+        
+        stdout = ''.join(stdout_lines)
+        stderr = ''.join(stderr_lines)
+        is_success = process.returncode == 0
+        
+        if stderr and not is_success:
+            print(f"--- Errors ---\n{stderr}")
         
         conductivity = None
         match = re.search(r"[Cc]onductivity[:\s]+([0-9.eE+-]+)", stdout)
@@ -191,8 +255,8 @@ def _extract_code(response: str) -> str:
 def _direct_fix(code: str, error: str, llm) -> str:
     """Strategy 1: Direct fix based on error message"""
     prompt_vars = {
-        "error_message": error[:1000],
-        "code": code[:3000],
+        "error_message": error,
+        "code": code,
         "additional_context": "Fix the error directly based on the error message."
     }
     
@@ -208,7 +272,7 @@ def _memory_fix(code: str, error: str, llm, run_dir: str) -> str:
     """Strategy 2: Fix using past successful code patterns"""
     from kokoa.memory import search_memory
     
-    skills = search_memory(error[:200], "skills", k=2, run_dir=run_dir)
+    skills = search_memory(error, "skills", k=2, run_dir=run_dir)
     
     skills_context = ""
     if skills:
@@ -217,8 +281,8 @@ def _memory_fix(code: str, error: str, llm, run_dir: str) -> str:
             skills_context += f"{s['content'][:800]}\n---\n"
     
     prompt_vars = {
-        "error_message": error[:1000],
-        "code": code[:3000],
+        "error_message": error,
+        "code": code,
         "additional_context": f"Use these successful code patterns as reference:\n{skills_context}" if skills_context else "No past patterns available."
     }
     
@@ -285,8 +349,8 @@ Common fixes:
 - Fix variable scoping issues"""
     
     prompt_vars = {
-        "error_message": error[:1000],
-        "code": code[:3000],
+        "error_message": error,
+        "code": code,
         "additional_context": context
     }
     
@@ -310,7 +374,7 @@ def _parallel_debug(code: str, error: str, llm, run_dir: str) -> List[str]:
         results = []
         for i, future in enumerate(futures):
             try:
-                fixed_code = future.result(timeout=60)
+                fixed_code = future.result(timeout=Config.TIMEOUT)
                 results.append(fixed_code)
             except Exception as e:
                 print(f"   Debug strategy {i+1} failed: {e}")
@@ -339,7 +403,7 @@ def _select_best_fix(fixes: List[str], run_dir: str, iteration: int) -> Tuple[Op
             print(f"   Fix {i+1} succeeded! σ = {result.conductivity} S/cm")
             return code, result
         
-        if best_result is None or (result.conductivity and (best_result.conductivity is None or abs(result.conductivity - 1.97e-6) < abs(best_result.conductivity - 1.97e-6))):
+        if best_result is None or (result.conductivity and (best_result.conductivity is None or abs(result.conductivity - Config.TARGET_CONDUCTIVITY) < abs(best_result.conductivity - Config.TARGET_CONDUCTIVITY))):
             best_code = code
             best_result = result
     

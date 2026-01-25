@@ -139,7 +139,7 @@ def run_experiment(app, goal: str, thread_id: str = None):
         if final_state:
             result = final_state.get("simulation_output") or initial_state.get("simulation_output")
             if result and result.conductivity:
-                target = 1.97e-6
+                target = Config.TARGET_CONDUCTIVITY
                 error = abs(target - result.conductivity) / target * 100
                 print(f"📊 Final: σ = {result.conductivity} S/cm (error: {error:.1f}%)")
         

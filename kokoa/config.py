@@ -51,7 +51,12 @@ class Config:
     ARXIV_MAX_DOCS = 3
     
     # Simulation parameters
-    SIMULATION_TIME = 5e-9  # Target simulation time in seconds (default: 5ns)
+    SIMULATION_TIME = 1000e-9  # Timeout for simulation (1000ns), convergence-based termination is primary
+    TARGET_CONDUCTIVITY = 1.97e-6  # Target: experimental LLZO conductivity (S/cm)
+    CIF_FILENAME = "LLZO.cif"  # CIF file name in project root
+    
+    # Timeout settings (unified)
+    TIMEOUT = 1800  # 30 minutes for all operations
     
     # Memory permission control
     # Only high-quality models can write to unified memory (prevent hallucination pollution)

@@ -60,7 +60,7 @@ ASSUMPTION_REVIEW_PROMPT = ChatPromptTemplate.from_messages([
     ("user", """[CURRENT SIMULATION STATUS - USE THIS FOR DECISION]
 - Target: 1.97e-6 S/cm (experimental LLZO conductivity)
 - Current: {current_conductivity} S/cm
-- Error: {error_rate}% ← Focus on reducing this
+- Error: {error_rate}%
 
 {assumptions_checklist}
 
@@ -72,44 +72,30 @@ Select ONE assumption to relax and explain.""")
 
 
 SCIENTIST_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """You are a **Computational Materials Scientist** specializing in kinetic Monte Carlo (kMC) simulations for solid-state electrolytes.
+    ("system", """You are a Computational Scientist improving a kMC simulation.
 
-**YOUR ROLE:**
-You are RELAXING the following assumption to make the simulation more realistic:
+**GOAL:** Relax this assumption:
 {assumption_being_relaxed}
 
-**Implementation Plan:**
+**PLAN:**
 {implementation_plan}
 
-**CODE MODIFICATION RULES (CRITICAL):**
-1. **PRESERVE the existing code structure** - Only modify the parts directly related to the assumption being relaxed
-2. **DO NOT change** the following (these are FIXED):
-   - CIF path loading logic (`cif_path = os.path.join(...)`)
-   - Supercell size (`N = 4`, `structure.make_supercell([N, N, N])`)
-   - Convergence logic (`sigma_history`, RSD < 5% check, 1000 samples)
-   - JSON result saving (`result = {...}`, `json.dump(...)`)
-   - Print format for final conductivity (`print(f"Conductivity: ...")`)
-   - `target_time` variable value
-3. **DO NOT remove** any existing features
-4. Make the **MINIMUM changes** necessary to implement the assumption relaxation
-5. If adding new physics, integrate it into the existing `KMCSimulator` class structure
-6. You may modify:
-   - `KMCSimulator.__init__()` to add new parameters
-   - `KMCSimulator.run_step()` to implement new hopping physics
-   - `sim_params` dictionary to add new physical parameters
-   - Add helper methods to `KMCSimulator` if needed
+**INSTRUCTIONS:**
+1. **Start your code EXACTLY with this block:**
+   ```python
+   import os, sys, json
+   import numpy as np
+   from pymatgen.core import Structure
 
-**CODE REQUIREMENTS:**
-1. NO 'kokoa' imports - code must be standalone
-2. Use: numpy, scipy, pymatgen (avoid adding unnecessary dependencies)
-3. Keep the existing variable names for CIF loading
-4. Print: `print(f"Conductivity: {{val}} S/cm")`
-
-**IMPORTANT:**
-- Implement the assumption relaxation as specified
-- Make ONE focused improvement while preserving everything else
-- The CodeAgent will fix any Python bugs later
-- python_code field should contain ONLY the raw Python code, no markdown code blocks
+   # Load structure (CIF is in current directory)
+   structure = Structure.from_file("LLZO.cif")
+   N = 4
+   structure.make_supercell([N, N, N])
+   print(f"Supercell: {N}x{N}x{N}, Total atoms: {len(structure)}")
+   ```
+2. **Freely modify** the simulation logic to implement the plan. You may add new classes, imports, or dependencies as needed.
+3. **MINIMAL MODIFICATION**: Implement ONLY the changes necessary for the hypothesis. PRESERVE the backbone (loading, convergence logic, JSON saving, and `print(f"Conductivity: {{val}} S/cm")`) exactly as is.
+4. **Output full executable code** (no wrapper provided).
 
 {format_instructions}"""),
     ("user", """[Goal]: {goal}
@@ -190,7 +176,7 @@ def _search_knowledge(query: str, run_dir: str, knowledge_retriever) -> str:
     print("   [4/4] arXiv Search...")
     try:
         loader = ArxivLoader(
-            query=query[:200],
+            query=query,
             load_max_docs=2,
             load_all_available_meta=True
         )
@@ -218,7 +204,7 @@ def _review_assumptions(state: AgentState, llm) -> AssumptionReviewOutput:
     sim_output = state.get("simulation_output")
     
     current_conductivity = sim_output.conductivity if sim_output and sim_output.conductivity else 0.0
-    target = 1.97e-6
+    target = Config.TARGET_CONDUCTIVITY
     error_rate = abs(target - current_conductivity) / target * 100 if current_conductivity else 100.0
     error_message = sim_output.error_message if sim_output else "No previous result"
     
@@ -244,13 +230,14 @@ def scientist_node(state: AgentState, knowledge_retriever, llm) -> dict:
     research_log = state.get("research_log", [])
     run_dir = state.get("run_dir")
     current_code = state.get("python_code", "")
+
     
     print(f"[Scientist] Iteration {iteration}")
     
     sim_output = state.get("simulation_output")
     
     if sim_output and sim_output.is_success and sim_output.conductivity:
-        target = 1.97e-6
+        target = Config.TARGET_CONDUCTIVITY
         error_rate = abs(target - sim_output.conductivity) / target * 100
         
         print(f"   Previous result: σ = {sim_output.conductivity} S/cm (error: {error_rate:.1f}%)")
@@ -349,7 +336,7 @@ Physical Reality: {assumption_review.physical_reality if assumption_review else 
             "goal": state["goal"],
             "current_code": current_code if current_code else "# No existing code",
             "simulation_result": sim_result_text,
-            "knowledge_context": knowledge_context[:4000],
+            "knowledge_context": knowledge_context,
             "simulation_time": Config.SIMULATION_TIME,
             "assumption_being_relaxed": assumption_context,
             "implementation_plan": implementation_plan
