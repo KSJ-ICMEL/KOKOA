@@ -109,8 +109,9 @@ class KMCSimulator:
 sim_params = {'T': 298, 'E_a': 0.30, 'nu': 1e13, 'volume': structure.volume}
 sim = KMCSimulator(structure, adj_list, initial_sites, sim_params)
 
-target_time = 5e-9  # 5ns (DO NOT MODIFY)
-log_interval = 2000
+target_time = 1000e-9  # 1000ns timeout
+log_interval = 100
+sigma_history = []
 
 while sim.current_time < target_time:
     if not sim.run_step():
@@ -118,7 +119,24 @@ while sim.current_time < target_time:
         break
     if sim.step_count % log_interval == 0:
         msd, sigma = sim.calculate_properties()
-        print(f"Step {sim.step_count}: {sim.current_time*1e9:.2f}ns, MSD={msd:.2f}A^2, sigma={sigma*1e3:.4f}mS/cm")
+        sigma_history.append(sigma)
+        
+        # Check convergence
+        if len(sigma_history) > 1000:
+            sigma_history.pop(0) # Keep last 1000
+            
+        if len(sigma_history) == 1000:
+            avg_sigma = np.mean(sigma_history)
+            std_sigma = np.std(sigma_history)
+            rsd = std_sigma / avg_sigma if avg_sigma > 0 else 0
+            
+            print(f"Step {sim.step_count}: {sim.current_time*1e9:.2f}ns, MSD={msd:.2f}A^2, sigma={sigma*1e3:.4f}mS/cm, RSD={rsd*100:.2f}%")
+            
+            if rsd < 0.05: # 5% convergence criteria
+                print(f"Convergence reached (RSD < 5%) at {sim.current_time*1e9:.2f}ns")
+                break
+        else:
+            print(f"Step {sim.step_count}: {sim.current_time*1e9:.2f}ns, MSD={msd:.2f}A^2, sigma={sigma*1e3:.4f}mS/cm")
 
 # Final result
 msd, sigma = sim.calculate_properties()
