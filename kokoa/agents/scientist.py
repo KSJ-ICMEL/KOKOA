@@ -332,7 +332,7 @@ Physical Reality: {assumption_review.physical_reality if assumption_review else 
     try:
         result: ScientistOutput = chain.invoke({
             "goal": state["goal"],
-            "current_code": current_code[:3000] if current_code else "# No existing code",
+            "current_code": current_code if current_code else "# No existing code",
             "simulation_result": sim_result_text,
             "knowledge_context": knowledge_context[:4000],
             "simulation_time": Config.SIMULATION_TIME,
