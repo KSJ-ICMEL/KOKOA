@@ -37,13 +37,15 @@ def create_llm(model_name: str):
         from langchain_google_genai import ChatGoogleGenerativeAI
         return ChatGoogleGenerativeAI(
             model=model_name,
-            temperature=Config.TEMPERATURE
+            temperature=Config.TEMPERATURE,
+            thinking_level=Config.THINKING_LEVEL
         )
     else:
         from langchain_ollama import ChatOllama
         return ChatOllama(
             model=model_name,
-            temperature=Config.TEMPERATURE
+            temperature=Config.TEMPERATURE,
+            reasoning=Config.THINKING_LEVEL
         )
 
 
