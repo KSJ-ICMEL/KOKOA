@@ -29,6 +29,7 @@ class Config:
         "gemini-3-flash-preview",
     ]
     TEMPERATURE = 0.1
+    THINKING_LEVEL = 'high'
     
     EMBEDDING_MODEL = "BAAI/bge-m3"
     EMBEDDING_DEVICE = get_device()  # Auto-detect: cuda, mps, or cpu
