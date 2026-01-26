@@ -8,6 +8,7 @@ Archivist Agent - LLM-Powered Knowledge Archiving Specialist
 
 import difflib
 import math
+import os
 from datetime import datetime
 from typing import Optional
 
@@ -24,26 +25,27 @@ from kokoa.state import AgentState
 ANALYSIS_PROMPT = ChatPromptTemplate.from_messages([
     ("system", """You are a scientific analyst reviewing kMC simulation experiments.
 
-Analyze the experiment and write a technical report in the following format:
+Your task is to analyze the experiment and write a technical report.
+
+Classification criteria:
+- SUCCESS: Hypothesis correctly implemented AND log error decreased
+- NEUTRAL: Hypothesis correctly implemented BUT log error increased  
+- FAILURE: Code error prevented conductivity calculation
+
+**Write the report in exactly this format:**
 
 ## Result: [SUCCESS/NEUTRAL/FAILURE]
 
-**Criteria:**
-- SUCCESS: Hypothesis properly implemented AND log error decreased
-- NEUTRAL: Hypothesis properly implemented BUT log error increased  
-- FAILURE: Code error prevented conductivity calculation
-
 ## Code Changes
-(Summarize the diff in 2-3 sentences - what physics was added/modified?)
+(Copy the whole diff from [Code Diff] section here.)
 
 ## Discussion
-(Analyze WHY this result occurred. Use the provided references if relevant, or explain based on physics principles. 300 tokens max.)
+(Analyze WHY this result occurred. Reference the provided sources if relevant, or explain based on physics principles.)
 
 References (if provided):
 {references}
 """),
     ("user", """
-[Iteration]: {iteration}
 [Hypothesis]: {hypothesis}
 
 [Code Diff]:
@@ -86,11 +88,6 @@ def _generate_diff(previous_code: str, current_code: str) -> str:
         lineterm=''
     )
     diff_text = ''.join(diff)
-    
-    # Truncate if too long
-    if len(diff_text) > 2000:
-        diff_text = diff_text[:2000] + "\n... (truncated)"
-    
     return diff_text if diff_text else "(No changes detected)"
 
 
@@ -118,7 +115,7 @@ def _search_references(hypothesis: str, result_type: str) -> str:
         
         refs = []
         for i, result in enumerate(response.get("results", [])[:3]):
-            refs.append(f"[{i+1}] {result.get('title', 'N/A')}\n    {result.get('content', '')[:200]}")
+            refs.append(f"[{i+1}] {result.get('title', 'N/A')}\n    {result.get('content', '')}")
         
         return "\n\n".join(refs) if refs else "(No relevant references found)"
         
@@ -143,17 +140,41 @@ def archivist_node(state: AgentState, llm) -> dict:
     result = state.get("simulation_output")
     python_code = state.get("python_code", "")
     previous_code = state.get("previous_code", "")
+    
+    # Fallback: If no previous code (1st iteration), use initial_state.py
+    if not previous_code:
+        try:
+            with open(os.path.join(Config.INITIAL_STATE_DIR, "initial_state.py"), "r", encoding="utf-8") as f:
+                previous_code = f.read()
+            print("   [Diff] Using initial_state.py as baseline")
+        except Exception:
+            previous_code = ""
+
     hypothesis = state.get("hypothesis", "")
     run_dir = state.get("run_dir")
     iteration = state.get("iteration_count", 0)
     research_log = state.get("research_log", [])
-    prev_error_rate = state.get("current_error_rate", 100.0)
+    # prev_log_error is retrieved directly from state (default 10.0)
+    prev_log_error = state.get("current_log_error", 10.0)
     
     target = Config.TARGET_CONDUCTIVITY
     
     # Calculate log-scale errors
     curr_conductivity = result.conductivity if result and result.conductivity else 0.0
-    prev_log_error = math.log10(prev_error_rate / 100 * target + target) - math.log10(target) if prev_error_rate < 100 else 10.0
+    
+    # For first iteration, use initial_state.json conductivity as baseline
+    if iteration <= 1:
+        try:
+            import json
+            initial_json_path = os.path.join(Config.INITIAL_STATE_DIR, "initial_state.json")
+            with open(initial_json_path, "r", encoding="utf-8") as f:
+                initial_data = json.load(f)
+            initial_conductivity = initial_data.get("conductivity", 0.0)
+            prev_log_error = _calculate_log_error(initial_conductivity) if initial_conductivity > 0 else 10.0
+            print(f"   [Baseline] Using initial_state.json conductivity: {initial_conductivity} S/cm")
+        except Exception:
+            prev_log_error = 10.0
+    
     curr_log_error = _calculate_log_error(curr_conductivity) if curr_conductivity > 0 else 10.0
     error_delta = curr_log_error - prev_log_error
     
@@ -175,8 +196,7 @@ def archivist_node(state: AgentState, llm) -> dict:
         chain = ANALYSIS_PROMPT | llm | StrOutputParser()
         
         report = chain.invoke({
-            "iteration": iteration,
-            "hypothesis": hypothesis[:500] if hypothesis else "N/A",
+            "hypothesis": hypothesis if hypothesis else "N/A",
             "diff": diff_text,
             "is_success": is_success,
             "conductivity": curr_conductivity,
@@ -227,7 +247,8 @@ Timestamp: {datetime.now().isoformat()}
     
     return {
         "research_log": research_log + [f"Archivist: {result_type} - Report saved"],
-        "previous_code": python_code  # Update previous_code for next iteration
+        "previous_code": python_code,  # Update previous_code for next iteration
+        "current_log_error": curr_log_error  # Store log error directly
     }
 
 
