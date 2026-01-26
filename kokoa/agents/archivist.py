@@ -63,6 +63,9 @@ References (if provided):
 [Error Message (if any)]:
 {error_message}
 
+[Code Agent Fix Report]:
+{debug_summary}
+
 Write the technical report:
 """)
 ])
@@ -139,6 +142,7 @@ def archivist_node(state: AgentState, llm) -> dict:
     
     result = state.get("simulation_output")
     python_code = state.get("python_code", "")
+    scientist_code = state.get("scientist_code", python_code) # Use Scientist's code for diff (intended logic)
     previous_code = state.get("previous_code", "")
     
     # Fallback: If no previous code (1st iteration), use initial_state.py
@@ -178,8 +182,8 @@ def archivist_node(state: AgentState, llm) -> dict:
     curr_log_error = _calculate_log_error(curr_conductivity) if curr_conductivity > 0 else 10.0
     error_delta = curr_log_error - prev_log_error
     
-    # Generate diff
-    diff_text = _generate_diff(previous_code, python_code)
+    # Generate diff (Compare previous vs Scientist's intended code)
+    diff_text = _generate_diff(previous_code, scientist_code)
     print(f"   [1/4] Generated diff ({len(diff_text)} chars)")
     
     # Classify result
@@ -204,6 +208,7 @@ def archivist_node(state: AgentState, llm) -> dict:
             "curr_log_error": curr_log_error,
             "error_delta": error_delta,
             "error_message": result.error_message if result and result.error_message else "None",
+            "debug_summary": state.get("debug_summary", "No debugging needed."),
             "references": references
         })
         print(f"   [4/4] Generated technical report ({len(report)} chars)")
