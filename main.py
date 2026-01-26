@@ -73,7 +73,7 @@ def main():
     
     scientist = create_scientist_node(retriever, llm)
     code_agent = create_code_agent_node(llm)
-    archivist = create_archivist_node()
+    archivist = create_archivist_node(llm)  # LLM-powered analysis
     
     app = build_workflow(scientist, code_agent, archivist)
     print("   ✅ Workflow built")

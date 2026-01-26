@@ -128,7 +128,7 @@ def execute_code(code: str, run_dir: str, iteration: int, timeout: int = SIMULAT
     sim_dir = os.path.join(run_dir, "simulation")
     os.makedirs(sim_dir, exist_ok=True)
     
-    script_name = f"{iteration:03d}.py"
+    script_name = f"{datetime.now().strftime('%y%m%d%H%M%S')}.py"
     script_path = os.path.abspath(os.path.join(sim_dir, script_name))
     
     # Copy CIF file to simulation directory (Essential for self-contained execution)
