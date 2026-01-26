@@ -16,6 +16,8 @@ from datetime import datetime
 from typing import Optional, List, Tuple
 from concurrent.futures import ThreadPoolExecutor
 
+from langchain_core.runnables import RunnableConfig
+
 from langchain_core.prompts import ChatPromptTemplate
 
 from kokoa.config import Config
@@ -33,14 +35,19 @@ DEBUG_PROMPT = ChatPromptTemplate.from_messages([
 **Your job:**
 1. Analyze the error message
 2. Fix the bug
-3. Return the corrected code
+3. Return a summary of the fix and the corrected code
 
 **Output format:**
+```plain text
+[Error Analysis]: Brief explanation of the error
+[Fix]: How you fixed it
+```
+
 ```python
 # Fixed code here
 ```
 
-Only output the fixed Python code. No explanations."""),
+Output ONLY the two blocks above."""),
     ("user", """**Error:**
 {error_message}
 
@@ -240,19 +247,36 @@ def save_result(result: SimulationResult, run_dir: str, iteration: int):
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
-def _extract_code(response: str) -> str:
+def _extract_fix_info(response: str) -> Tuple[str, str]:
+    """Extract (fixed_code, debug_summary) from LLM response"""
+    debug_summary = "No debug summary provided."
+    fixed_code = response.strip()
+
+    # Extract plain text summary
+    summary_match = re.search(r'```plain text\s*(.*?)\s*```', response, re.DOTALL)
+    if summary_match:
+        debug_summary = summary_match.group(1).strip()
+    
+    # Extract python code
     if "```python" in response:
         match = re.search(r'```python\s*(.*?)\s*```', response, re.DOTALL)
         if match:
-            return match.group(1).strip()
-    if "```" in response:
+            fixed_code = match.group(1).strip()
+    elif "```" in response:
+        # Fallback for generic block if python one missing
         match = re.search(r'```\s*(.*?)\s*```', response, re.DOTALL)
         if match:
-            return match.group(1).strip()
-    return response.strip()
+             # If the first block was plain text, find the second one
+            matches = re.findall(r'```\s*(.*?)\s*```', response, re.DOTALL)
+            if len(matches) > 1 and summary_match:
+                fixed_code = matches[1].strip()
+            else:
+                fixed_code = match.group(1).strip()
+                
+    return fixed_code, debug_summary
 
 
-def _direct_fix(code: str, error: str, llm) -> str:
+def _direct_fix(code: str, error: str, llm, config: RunnableConfig) -> Tuple[str, str]:
     """Strategy 1: Direct fix based on error message"""
     prompt_vars = {
         "error_message": error,
@@ -261,14 +285,14 @@ def _direct_fix(code: str, error: str, llm) -> str:
     }
     
     response = ""
-    for chunk in llm.stream(DEBUG_PROMPT.format_messages(**prompt_vars)):
+    for chunk in llm.stream(DEBUG_PROMPT.format_messages(**prompt_vars), config=config):
         content = chunk.content if hasattr(chunk, 'content') else str(chunk)
         response += content
     
-    return _extract_code(response)
+    return _extract_fix_info(response)
 
 
-def _memory_fix(code: str, error: str, llm, run_dir: str) -> str:
+def _memory_fix(code: str, error: str, llm, run_dir: str, config: RunnableConfig) -> Tuple[str, str]:
     """Strategy 2: Fix using past successful code patterns"""
     from kokoa.memory import search_memory
     
@@ -287,14 +311,15 @@ def _memory_fix(code: str, error: str, llm, run_dir: str) -> str:
     }
     
     response = ""
-    for chunk in llm.stream(DEBUG_PROMPT.format_messages(**prompt_vars)):
+    response = ""
+    for chunk in llm.stream(DEBUG_PROMPT.format_messages(**prompt_vars), config=config):
         content = chunk.content if hasattr(chunk, 'content') else str(chunk)
         response += content
     
-    return _extract_code(response)
+    return _extract_fix_info(response)
 
 
-def _introspect_fix(code: str, error: str, llm) -> str:
+def _introspect_fix(code: str, error: str, llm, config: RunnableConfig) -> Tuple[str, str]:
     """Strategy 3: Introspection - analyze imports and API usage with real introspection"""
     from kokoa.tools import quick_introspect, web_search, format_search_results
     
@@ -355,27 +380,28 @@ Common fixes:
     }
     
     response = ""
-    for chunk in llm.stream(DEBUG_PROMPT.format_messages(**prompt_vars)):
+    response = ""
+    for chunk in llm.stream(DEBUG_PROMPT.format_messages(**prompt_vars), config=config):
         content = chunk.content if hasattr(chunk, 'content') else str(chunk)
         response += content
     
-    return _extract_code(response)
+    return _extract_fix_info(response)
 
 
-def _parallel_debug(code: str, error: str, llm, run_dir: str) -> List[str]:
-    """Run 3 debugging strategies in parallel"""
+def _parallel_debug(code: str, error: str, llm, run_dir: str, config: RunnableConfig) -> List[Tuple[str, str]]:
+    """Run 3 debugging strategies in parallel. Returns list of (code, summary)"""
     with ThreadPoolExecutor(max_workers=3) as executor:
         futures = [
-            executor.submit(_direct_fix, code, error, llm),
-            executor.submit(_memory_fix, code, error, llm, run_dir),
-            executor.submit(_introspect_fix, code, error, llm)
+            executor.submit(_direct_fix, code, error, llm, config),
+            executor.submit(_memory_fix, code, error, llm, run_dir, config),
+            executor.submit(_introspect_fix, code, error, llm, config)
         ]
         
         results = []
         for i, future in enumerate(futures):
             try:
-                fixed_code = future.result(timeout=Config.TIMEOUT)
-                results.append(fixed_code)
+                fixed_code, summary = future.result(timeout=Config.TIMEOUT)
+                results.append((fixed_code, summary))
             except Exception as e:
                 print(f"   Debug strategy {i+1} failed: {e}")
                 results.append(None)
@@ -388,7 +414,13 @@ def _select_best_fix(fixes: List[str], run_dir: str, iteration: int) -> Tuple[Op
     best_code = None
     best_result = None
     
-    for i, code in enumerate(fixes):
+def _select_best_fix(fixes: List[Tuple[str, str]], run_dir: str, iteration: int) -> Tuple[Optional[str], Optional[SimulationResult], str]:
+    """Execute each fix and select the best result. Returns (code, result, summary)"""
+    best_code = None
+    best_result = None
+    best_summary = ""
+    
+    for i, (code, summary) in enumerate(fixes):
         if not code:
             continue
         
@@ -401,16 +433,17 @@ def _select_best_fix(fixes: List[str], run_dir: str, iteration: int) -> Tuple[Op
         
         if result.is_success:
             print(f"   Fix {i+1} succeeded! σ = {result.conductivity} S/cm")
-            return code, result
+            return code, result, summary
         
         if best_result is None or (result.conductivity and (best_result.conductivity is None or abs(result.conductivity - Config.TARGET_CONDUCTIVITY) < abs(best_result.conductivity - Config.TARGET_CONDUCTIVITY))):
             best_code = code
             best_result = result
+            best_summary = summary
     
-    return best_code, best_result
+    return best_code, best_result, best_summary
 
 
-def code_agent_node(state: AgentState, llm) -> dict:
+def code_agent_node(state: AgentState, llm, config: RunnableConfig) -> dict:
     """Code Agent: Execute code and debug if needed"""
     iteration = state.get("iteration_count", 0) + 1
     code = state.get("python_code", "")
@@ -461,6 +494,7 @@ def code_agent_node(state: AgentState, llm) -> dict:
         print(f"   {log_msg}")
         return {
             "python_code": code,
+            "scientist_code": code, # Save original Scientist code
             "simulation_output": result,
             "iteration_count": iteration,
             "last_valid_code": code,
@@ -470,7 +504,7 @@ def code_agent_node(state: AgentState, llm) -> dict:
     print(f"   Execution failed: {result.error_message[:100]}...")
     print("   Starting parallel debugging (3 strategies)...")
     
-    fixes = _parallel_debug(code, result.error_message or "", llm, run_dir)
+    fixes = _parallel_debug(code, result.error_message or "", llm, run_dir, config)
     
     if not fixes:
         print("   All debug strategies failed")
@@ -483,7 +517,7 @@ def code_agent_node(state: AgentState, llm) -> dict:
         }
     
     print(f"   Got {len(fixes)} candidate fixes, testing...")
-    best_code, best_result = _select_best_fix(fixes, run_dir, iteration)
+    best_code, best_result, best_summary = _select_best_fix(fixes, run_dir, iteration)
     
     if best_code and best_result:
         save_result(best_result, run_dir, iteration)
@@ -496,6 +530,8 @@ def code_agent_node(state: AgentState, llm) -> dict:
         print(f"   {log_msg}")
         return {
             "python_code": best_code,
+            "scientist_code": code, # Preserve original broken code for diff
+            "debug_summary": best_summary,
             "simulation_output": best_result,
             "iteration_count": iteration,
             "last_valid_code": best_code if best_result.is_success else state.get("last_valid_code", ""),
@@ -512,6 +548,6 @@ def code_agent_node(state: AgentState, llm) -> dict:
 
 
 def create_code_agent_node(llm):
-    def node_fn(state: AgentState) -> dict:
-        return code_agent_node(state, llm)
+    def node_fn(state: AgentState, config: RunnableConfig) -> dict:
+        return code_agent_node(state, llm, config)
     return node_fn
