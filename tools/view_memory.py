@@ -60,11 +60,24 @@ def get_all_data() -> dict:
         data["pdfs"] = get_collection_documents(PDF_STORE)
         print(f"  - PDFs: {len(data['pdfs'])} docs")
     
-    # Technical reports (directly in initial_state/)
+    # Technical reports (Global)
     reports_path = os.path.join(BASE_DIR, "initial_state", "technical_reports")
     if os.path.exists(reports_path):
-        data["technical_reports"] = get_collection_documents(reports_path)
-        print(f"  - Reports: {len(data['technical_reports'])} docs")
+        data["technical_reports"].extend(get_collection_documents(reports_path))
+    
+    # Technical reports (Runs - latest 5)
+    runs_dir = os.path.join(BASE_DIR, "runs")
+    if os.path.exists(runs_dir):
+        run_folders = sorted([os.path.join(runs_dir, d) for d in os.listdir(runs_dir)], key=os.path.getmtime, reverse=True)[:5]
+        for run in run_folders:
+            run_reports = os.path.join(run, "technical_reports")
+            if os.path.exists(run_reports):
+                docs = get_collection_documents(run_reports)
+                for doc in docs:
+                    doc["source"] = f"Run {os.path.basename(run)}"
+                data["technical_reports"].extend(docs)
+                
+    print(f"  - Reports: {len(data['technical_reports'])} docs")
     
     return data
 
@@ -81,12 +94,16 @@ def generate_html(data: dict) -> str:
             if "error" in item:
                 html += f"<div class='item error'>Error: {item['error']}</div>"
             else:
-                content = item.get("content", "")[:500]
+                content = item.get("content", "")
+                source = item.get("source", "Global")
                 meta = json.dumps(item.get("metadata", {}), indent=2, ensure_ascii=False)
                 html += f"""
                 <div class='item'>
-                    <div class='item-header'>Document #{i+1}</div>
-                    <div class='content'>{content}...</div>
+                    <div class='item-header'>
+                        Document #{i+1} 
+                        <span style='float:right; font-size:12px; font-weight:normal; color:#888'>{source}</span>
+                    </div>
+                    <div class='content'>{content}</div>
                     <details>
                         <summary>Metadata</summary>
                         <pre>{meta}</pre>
