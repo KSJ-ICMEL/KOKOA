@@ -40,7 +40,7 @@ class AgentState(TypedDict):
     
     # Simulation
     simulation_output: Optional[SimulationResult]
-    current_error_rate: Optional[float]
+    current_log_error: Optional[float]
     
     # Flow control
     research_log: List[str]
@@ -134,7 +134,7 @@ def create_initial_state(goal: str, run_id: str = None) -> AgentState:
         
         # Simulation
         "simulation_output": initial_result,
-        "current_error_rate": 100.0,
+        "current_log_error": 10.0,
         
         # Flow control
         "research_log": [f"--- Run {run_id} Started ---"],
