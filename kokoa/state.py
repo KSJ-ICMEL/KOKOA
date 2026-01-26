@@ -37,6 +37,8 @@ class AgentState(TypedDict):
     python_code: str
     previous_code: str  # For diff generation in Archivist
     last_valid_code: str
+    scientist_code: Optional[str] # Original code from Scientist (before fixes)
+    debug_summary: Optional[str] # Summary of fixes by CodeAgent
     
     # Simulation
     simulation_output: Optional[SimulationResult]
@@ -131,6 +133,8 @@ def create_initial_state(goal: str, run_id: str = None) -> AgentState:
         "python_code": initial_code,
         "previous_code": "",
         "last_valid_code": initial_code,
+        "scientist_code": initial_code,
+        "debug_summary": "",
         
         # Simulation
         "simulation_output": initial_result,
