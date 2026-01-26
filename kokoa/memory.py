@@ -1,15 +1,11 @@
 """
 KOKOA Unified Memory System
 ===========================
-CASCADE 스타일의 통합 메모리 시스템
-모든 에이전트가 공유하는 벡터 스토어 기반 장기 기억
+Simple is Best: 최소한의 컬렉션으로 최대 효율
 
 Collections:
-- papers: 외부 논문 (Researcher가 저장, Theorist가 검색)
-- experiments: 실험 결과 요약 (Analyst가 저장, Theorist/Engineer가 검색)
-- skills: 성공한 코드 패턴 (Analyst가 저장, Engineer가 검색)
-- insights: 배운 교훈/실패 원인 (Analyst가 저장, Theorist가 검색)
-- assumption_reviews: 가정 검증 및 완화 분석 (Archivist가 저장)
+- papers: 외부 논문 (RAG 검색용)
+- technical_reports: LLM 분석 기술 보고서 (result_type으로 필터링)
 """
 
 import os
@@ -22,7 +18,7 @@ from langchain_chroma import Chroma
 from kokoa.config import Config
 
 
-_COLLECTIONS = ["papers", "experiments", "skills", "insights", "assumption_reviews"]
+_COLLECTIONS = ["papers", "technical_reports"]
 _embedding_model = None
 _vector_stores: Dict[str, Chroma] = {}
 
@@ -42,10 +38,11 @@ def _get_vector_store(collection: str, run_dir: str = None) -> Chroma:
     if collection not in _COLLECTIONS:
         raise ValueError(f"Unknown collection: {collection}. Must be one of {_COLLECTIONS}")
     
+    # Simple is Best: no nested 'memory' folder
     if run_dir:
-        persist_dir = os.path.join(run_dir, "memory", collection)
+        persist_dir = os.path.join(run_dir, collection)
     else:
-        persist_dir = os.path.join(Config.INITIAL_STATE_DIR, "memory", collection)
+        persist_dir = os.path.join(Config.INITIAL_STATE_DIR, collection)
     
     os.makedirs(persist_dir, exist_ok=True)
     

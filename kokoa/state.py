@@ -31,30 +31,29 @@ class SimulationResult(BaseModel):
 
 
 class AgentState(TypedDict):
+    # Core
     goal: str
     hypothesis: str
     python_code: str
+    previous_code: str  # For diff generation in Archivist
     last_valid_code: str
     
+    # Simulation
     simulation_output: Optional[SimulationResult]
     current_error_rate: Optional[float]
     
+    # Flow control
     research_log: List[str]
     status: str
-    user_feedback: Optional[str]
-    failed_attempts: List[str]
     iteration_count: int
     
-    needs_research: bool
-    research_query: Optional[str]
-    knowledge_gap: Optional[str]
-    research_attempts: int
-    
+    # Assumptions
     assumptions_checklist: List[AssumptionItem]
     current_focus_assumption: Optional[str]
     focused_assumption_summary: Optional[FocusedAssumptionSummary]
     discovered_gaps: List[str]
     
+    # Runtime
     run_id: str
     run_dir: str
 
@@ -94,12 +93,12 @@ def create_run_directory(run_id: str) -> str:
     
     os.makedirs(os.path.join(run_dir, "simulation"), exist_ok=True)
     os.makedirs(os.path.join(run_dir, "simulation_result"), exist_ok=True)
-    os.makedirs(os.path.join(run_dir, "chroma_store"), exist_ok=True)
+    os.makedirs(os.path.join(run_dir, "pdf_store"), exist_ok=True)
     os.makedirs(os.path.join(run_dir, "pdf"), exist_ok=True)
     
     initial_chroma = Config.PERSIST_DIRECTORY
     if os.path.exists(initial_chroma):
-        run_chroma = os.path.join(run_dir, "chroma_store")
+        run_chroma = os.path.join(run_dir, "pdf_store")
         if not os.listdir(run_chroma):
             shutil.copytree(initial_chroma, run_chroma, dirs_exist_ok=True)
     
@@ -126,24 +125,29 @@ def create_initial_state(goal: str, run_id: str = None) -> AgentState:
     assumptions = copy.deepcopy(BASE_ASSUMPTIONS)
     
     return {
+        # Core
         "goal": goal,
         "hypothesis": "",
         "python_code": initial_code,
+        "previous_code": "",
+        "last_valid_code": initial_code,
+        
+        # Simulation
         "simulation_output": initial_result,
         "current_error_rate": 100.0,
+        
+        # Flow control
         "research_log": [f"--- Run {run_id} Started ---"],
-        "failed_attempts": [],
-        "iteration_count": 0,
         "status": "running",
-        "user_feedback": None,
-        "needs_research": False,
-        "research_query": None,
-        "knowledge_gap": None,
-        "research_attempts": 0,
+        "iteration_count": 0,
+        
+        # Assumptions
         "assumptions_checklist": assumptions,
         "current_focus_assumption": None,
         "focused_assumption_summary": None,
         "discovered_gaps": [],
+        
+        # Runtime
         "run_id": run_id,
         "run_dir": run_dir,
     }

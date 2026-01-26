@@ -41,7 +41,7 @@ class Config:
     INITIAL_STATE_DIR = os.path.join(_PROJECT_ROOT, "initial_state")
     RUNS_DIR = os.path.join(_PROJECT_ROOT, "runs")
     
-    PERSIST_DIRECTORY = os.path.join(_PROJECT_ROOT, "initial_state", "chroma_store")
+    PERSIST_DIRECTORY = os.path.join(_PROJECT_ROOT, "initial_state", "pdf_store")
     PDF_DIRECTORY = os.path.join(_PROJECT_ROOT, "initial_state", "pdf")
     WORKSPACE_DIR = os.path.join(_PROJECT_ROOT, "workspace")  # Legacy
     

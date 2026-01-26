@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from glob import glob
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_pymupdf4llm import PyMuPDF4LLMLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 
@@ -27,7 +27,7 @@ def init_vectorstore(force_rebuild: bool = False):
         force_rebuild: If True, delete existing store and rebuild
     """
     pdf_dir = os.path.join(os.path.dirname(__file__), "pdf")
-    persist_dir = os.path.join(os.path.dirname(__file__), "chroma_store")
+    persist_dir = os.path.join(os.path.dirname(__file__), "pdf_store")
     
     if os.path.exists(persist_dir) and not force_rebuild:
         print(f"✅ Vector store already exists: {persist_dir}")
@@ -42,15 +42,15 @@ def init_vectorstore(force_rebuild: bool = False):
     
     print(f"🔨 Building vector store from: {pdf_dir}")
     
-    # Load PDFs
-    pdf_files = glob(os.path.join(pdf_dir, "*.pdf"))
+    # Load PDFs (recursively search subdirectories)
+    pdf_files = glob(os.path.join(pdf_dir, "**", "*.pdf"), recursive=True)
     if not pdf_files:
         raise FileNotFoundError(f"No PDF files found in: {pdf_dir}")
     
     documents = []
     for pdf_file in pdf_files:
         try:
-            loader = PyPDFLoader(pdf_file)
+            loader = PyMuPDF4LLMLoader(pdf_file)
             documents.extend(loader.load())
             print(f"   ✅ Loaded: {os.path.basename(pdf_file)}")
         except Exception as e:
