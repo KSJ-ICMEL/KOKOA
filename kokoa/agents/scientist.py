@@ -29,22 +29,11 @@ from kokoa.assumptions_config import (
 class AssumptionReviewOutput(BaseModel):
     analysis: str = Field(description="Brief analysis of error source")
     selected_assumption_id: str = Field(description="A1-A10 or DISCOVERED")
-    reason_to_relax: str = Field(description="Why this assumption should be relaxed")
-    physical_reality: str = Field(description="What is the real physics")
+    reason_to_relax: str = Field(description="Why this assumption should be relaxed (scientific reason)")
     implementation_plan: str = Field(description="How to implement in kMC code")
-    expected_improvement: str = Field(description="Expected effect on conductivity")
     discovered_gap: Optional[str] = Field(None, description="New gap not in checklist")
-
-
-class HypothesisOutput(BaseModel):
-    title: str = Field(description="One-line improvement title")
-    mechanism: str = Field(description="Scientific explanation of assumption relaxation")
-    key_changes: List[str] = Field(description="List of key changes made")
-
-
-class ScientistOutput(BaseModel):
-    hypothesis: HypothesisOutput
-    python_code: str = Field(description="Complete kMC simulation code")
+    improvement_title: str = Field(description="One-line improvement title")
+    key_changes: List[str] = Field(description="List of key changes to be made in the code")
 
 
 ASSUMPTION_REVIEW_PROMPT = ChatPromptTemplate.from_messages([
@@ -53,8 +42,9 @@ ASSUMPTION_REVIEW_PROMPT = ChatPromptTemplate.from_messages([
 **TASK:**
 1. Analyze why the current simulation deviates from reality
 2. Identify which assumption most urgently needs to be relaxed
-3. Explain the physical reality and how to implement the fix
-4. If you discover a NEW gap not in the checklist, set discovered_gap field
+3. Explain the scientific reason and how to implement the fix
+4. Define the improvement strategy (Title and Key Changes)
+5. If you discover a NEW gap not in the checklist, set discovered_gap field
 
 {format_instructions}"""),
     ("user", """[CURRENT SIMULATION STATUS - USE THIS FOR DECISION]
@@ -95,10 +85,13 @@ SCIENTIST_PROMPT = ChatPromptTemplate.from_messages([
    ```
 2. **Freely modify** the simulation logic to implement the plan. You may add new classes, imports, or dependencies as needed.
 3. **MINIMAL MODIFICATION**: Implement ONLY the changes necessary for the hypothesis. PRESERVE the backbone (loading, convergence logic, JSON saving, and `print(f"Conductivity: {{val}} S/cm")`) exactly as is.
-4. **Output full executable code** (no wrapper provided).
+4. **Output full executable code** in a single Markdown code block.
 
-{format_instructions}"""),
+Do NOT produce any JSON. Just the explanation (if needed) and the code block."""),
     ("user", """[Goal]: {goal}
+
+[Strategy]: {improvement_title}
+Key Changes: {key_changes}
 
 [Current Simulation Code (PRESERVE UNRELATED PARTS)]:
 ```python
@@ -111,7 +104,8 @@ SCIENTIST_PROMPT = ChatPromptTemplate.from_messages([
 [Knowledge Context]:
 {knowledge_context}
 
-Generate improved kMC simulation code that relaxes ONLY the target assumption while preserving the rest of the code.""")
+Generate improved kMC simulation code that relaxes ONLY the target assumption while preserving the rest of the code.
+Output the code in a ```python ... ``` block.""")
 ])
 
 
@@ -195,7 +189,7 @@ def _search_knowledge(query: str, run_dir: str, knowledge_retriever) -> str:
 
 
 assumption_review_parser = PydanticOutputParser(pydantic_object=AssumptionReviewOutput)
-scientist_output_parser = PydanticOutputParser(pydantic_object=ScientistOutput)
+# scientist_output_parser removed - using direct text generation
 
 
 def _review_assumptions(state: AgentState, llm) -> AssumptionReviewOutput:
@@ -281,12 +275,16 @@ Error: {sim_output.error_message or 'None'}
     assumption_review = None
     assumption_to_relax = None
     implementation_plan = ""
+    improvement_title = "General Optimization"
+    key_changes = []
     assumption_context = "Continue improving the simulation."
     
     if active_assumptions:
         assumption_review = _review_assumptions(state, llm)
         selected_id = assumption_review.selected_assumption_id
         implementation_plan = assumption_review.implementation_plan
+        improvement_title = assumption_review.improvement_title
+        key_changes = assumption_review.key_changes
         
         if selected_id == "DISCOVERED" and assumption_review.discovered_gap:
             new_gap = assumption_review.discovered_gap
@@ -306,7 +304,6 @@ Error: {sim_output.error_message or 'None'}
             assumptions_checklist,
             assumption_to_relax["id"],
             assumption_review.reason_to_relax if assumption_review else "",
-            assumption_review.physical_reality if assumption_review else "",
             implementation_plan,
             iteration
         )
@@ -314,7 +311,6 @@ Error: {sim_output.error_message or 'None'}
         assumption_context = f"""
 [{assumption_to_relax['id']}] {assumption_to_relax['name']}
 Reason: {assumption_review.reason_to_relax if assumption_review else ''}
-Physical Reality: {assumption_review.physical_reality if assumption_review else ''}
 """
     else:
         query = f"{state['goal']} kMC ionic conductivity solid electrolyte simulation"
@@ -325,38 +321,50 @@ Physical Reality: {assumption_review.physical_reality if assumption_review else 
     
     print("   [3/3] Generating code...")
     
-    prompt_with_format = SCIENTIST_PROMPT.partial(
-        format_instructions=scientist_output_parser.get_format_instructions()
-    )
+    # Direct LLM call for code generation (no JSON parsing)
+    prompt_value = SCIENTIST_PROMPT.invoke({
+        "goal": state["goal"],
+        "current_code": current_code if current_code else "# No existing code",
+        "simulation_result": sim_result_text,
+        "knowledge_context": knowledge_context,
+        "simulation_time": Config.SIMULATION_TIME,
+        "assumption_being_relaxed": assumption_context,
+        "implementation_plan": implementation_plan,
+        "improvement_title": improvement_title,
+        "key_changes": ", ".join(key_changes)
+    })
     
-    chain = prompt_with_format | llm | scientist_output_parser
+    response = llm.invoke(prompt_value)
+    
+    # Handle both str and AIMessage response types
+    content = response.content if hasattr(response, "content") else str(response)
     
     try:
-        result: ScientistOutput = chain.invoke({
-            "goal": state["goal"],
-            "current_code": current_code if current_code else "# No existing code",
-            "simulation_result": sim_result_text,
-            "knowledge_context": knowledge_context,
-            "simulation_time": Config.SIMULATION_TIME,
-            "assumption_being_relaxed": assumption_context,
-            "implementation_plan": implementation_plan
-        })
+        # Extract code block using regex
+        code_match = re.search(r"```python\n(.*?)```", content, re.DOTALL)
+        if code_match:
+            python_code = code_match.group(1).strip()
+        else:
+            # Fallback: try to find any code block or use full content if likely code
+            code_match = re.search(r"```(.*?)```", content, re.DOTALL)
+            if code_match:
+                python_code = code_match.group(1).strip()
+            else:
+                print("   [Warning] No markdown code block found, checking if content looks like code...")
+                if "import" in content and "def" in content:
+                    python_code = content.strip()
+                else:
+                    python_code = current_code
         
-        hypothesis_text = f"""## {result.hypothesis.title}
-**Mechanism:** {result.hypothesis.mechanism}
-**Key Changes:** {', '.join(result.hypothesis.key_changes)}"""
-        
-        python_code = result.python_code.strip()
-        if python_code.startswith("```"):
-            python_code = re.sub(r'^```python?\s*', '', python_code)
-            python_code = re.sub(r'\s*```$', '', python_code)
+        hypothesis_text = f"""## {improvement_title}
+**Key Changes:** {', '.join(key_changes)}"""
         
         print(f"   Generated {len(python_code)} bytes of code")
         
     except Exception as e:
-        print(f"   [Warning] Output parsing failed: {e}")
-        hypothesis_text = "Continue optimization"
+        print(f"   [Warning] Code extraction failed: {e}")
         python_code = current_code
+        hypothesis_text = "Code generation failed"
     
     if not python_code:
         python_code = current_code
@@ -371,7 +379,6 @@ Physical Reality: {assumption_review.physical_reality if assumption_review else 
             "name": assumption_to_relax["name"],
             "status": "relaxed",
             "reason_to_relax": assumption_review.reason_to_relax,
-            "physical_reality": assumption_review.physical_reality,
             "implementation_plan": implementation_plan,
         }
     
@@ -384,7 +391,7 @@ Physical Reality: {assumption_review.physical_reality if assumption_review else 
         "current_focus_assumption": focus_assumption_id,
         "focused_assumption_summary": focused_summary,
         "discovered_gaps": discovered_gaps,
-        "research_log": research_log + [f"Scientist: {result.hypothesis.title if 'result' in dir() else 'Generated code'}"]
+        "research_log": research_log + [f"Scientist: {improvement_title}"]
     }
 
 

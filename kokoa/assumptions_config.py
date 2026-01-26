@@ -14,7 +14,6 @@ class AssumptionItem(TypedDict):
     description: str
     status: str
     reason_to_relax: Optional[str]
-    physical_reality: Optional[str]
     implementation_plan: Optional[str]
     relaxed_at_iteration: Optional[int]
 
@@ -27,7 +26,6 @@ BASE_ASSUMPTIONS: List[AssumptionItem] = [
         "description": "Host lattice (La, Zr, O) remains fixed. Lattice relaxation or local structural distortion due to lithium migration is not considered.",
         "status": "active",
         "reason_to_relax": None,
-        "physical_reality": None,
         "implementation_plan": None,
         "relaxed_at_iteration": None,
     },
@@ -38,7 +36,6 @@ BASE_ASSUMPTIONS: List[AssumptionItem] = [
         "description": "No thermal vibrations (phonons) in the host lattice. Phonon-assisted hopping effects are neglected.",
         "status": "active",
         "reason_to_relax": None,
-        "physical_reality": None,
         "implementation_plan": None,
         "relaxed_at_iteration": None,
     },
@@ -49,7 +46,6 @@ BASE_ASSUMPTIONS: List[AssumptionItem] = [
         "description": "Lithium migration paths determined solely by geometric proximity (within 4.0 Å). Bottleneck size/shape does not influence migration probability.",
         "status": "active",
         "reason_to_relax": None,
-        "physical_reality": None,
         "implementation_plan": None,
         "relaxed_at_iteration": None,
     },
@@ -60,7 +56,6 @@ BASE_ASSUMPTIONS: List[AssumptionItem] = [
         "description": "All lithium sites (24d, 96h) are energetically equivalent (ΔE_site=0). Jump directionality depends solely on random probability.",
         "status": "active",
         "reason_to_relax": None,
-        "physical_reality": None,
         "implementation_plan": None,
         "relaxed_at_iteration": None,
     },
@@ -71,7 +66,6 @@ BASE_ASSUMPTIONS: List[AssumptionItem] = [
         "description": "Li-Li interaction limited to volume exclusion (hard-sphere). Coulombic repulsion effects on activation energy barriers are ignored.",
         "status": "active",
         "reason_to_relax": None,
-        "physical_reality": None,
         "implementation_plan": None,
         "relaxed_at_iteration": None,
     },
@@ -82,7 +76,6 @@ BASE_ASSUMPTIONS: List[AssumptionItem] = [
         "description": "Initial distribution of Li ions and vacancies follows completely random distribution, disregarding thermodynamic stability or short-range ordering.",
         "status": "active",
         "reason_to_relax": None,
-        "physical_reality": None,
         "implementation_plan": None,
         "relaxed_at_iteration": None,
     },
@@ -93,7 +86,6 @@ BASE_ASSUMPTIONS: List[AssumptionItem] = [
         "description": "Time step (Δt) sampled from exponential distribution inversely proportional to total hopping rate (Bortz-Kalos-Lebowitz algorithm).",
         "status": "active",
         "reason_to_relax": None,
-        "physical_reality": None,
         "implementation_plan": None,
         "relaxed_at_iteration": None,
     },
@@ -104,7 +96,6 @@ BASE_ASSUMPTIONS: List[AssumptionItem] = [
         "description": "Activation energy (E_a=0.30 eV) and attempt frequency (ν=1e13 Hz) are constant for all migration paths, independent of local environment.",
         "status": "active",
         "reason_to_relax": None,
-        "physical_reality": None,
         "implementation_plan": None,
         "relaxed_at_iteration": None,
     },
@@ -115,7 +106,6 @@ BASE_ASSUMPTIONS: List[AssumptionItem] = [
         "description": "Lithium migration modeled as independent single-particle hopping. Multi-ion concerted motion mechanisms are not considered.",
         "status": "active",
         "reason_to_relax": None,
-        "physical_reality": None,
         "implementation_plan": None,
         "relaxed_at_iteration": None,
     },
@@ -126,7 +116,6 @@ BASE_ASSUMPTIONS: List[AssumptionItem] = [
         "description": "Haven ratio=1. Diffusion is uncorrelated random walk. Tracer diffusion coefficient (D_tracer) equals conductivity diffusion coefficient (D_σ).",
         "status": "active",
         "reason_to_relax": None,
-        "physical_reality": None,
         "implementation_plan": None,
         "relaxed_at_iteration": None,
     },
@@ -161,7 +150,6 @@ def relax_assumption(
     checklist: List[AssumptionItem],
     assumption_id: str,
     reason: str,
-    physical_reality: str,
     implementation_plan: str,
     iteration: int
 ) -> List[AssumptionItem]:
@@ -172,7 +160,6 @@ def relax_assumption(
                 **a,
                 "status": "relaxed",
                 "reason_to_relax": reason,
-                "physical_reality": physical_reality,
                 "implementation_plan": implementation_plan,
                 "relaxed_at_iteration": iteration,
             })
