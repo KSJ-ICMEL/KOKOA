@@ -1,8 +1,6 @@
-"""kMC Simulation for Li-ion Conductivity in Solid Electrolyte"""
+import os, sys, json
 import numpy as np
 from pymatgen.core import Structure
-import os
-import json
 
 # === 1. Structure Loading ===
 cif_path = "LLZO.cif"

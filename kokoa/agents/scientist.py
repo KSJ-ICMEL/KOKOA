@@ -77,11 +77,12 @@ SCIENTIST_PROMPT = ChatPromptTemplate.from_messages([
    import numpy as np
    from pymatgen.core import Structure
 
-   # Load structure (CIF is in current directory)
-   structure = Structure.from_file("LLZO.cif")
-   N = 4
+   # === 1. Structure Loading ===
+   cif_path = "LLZO.cif"
+   structure = Structure.from_file(cif_path)
+   N = 4  # Supercell expansion
    structure.make_supercell([N, N, N])
-   print(f"Supercell: {{N}}x{{N}}x{{N}}, Total atoms: {{len(structure)}}")
+   print(f"Supercell: {N}x{N}x{N}, Total atoms: {len(structure)}")
    ```
 2. **Freely modify** the simulation logic to implement the plan. You may add new classes, imports, or dependencies as needed.
 3. **MINIMAL MODIFICATION**: Implement ONLY the changes necessary for the hypothesis. PRESERVE the backbone (loading, convergence logic, JSON saving, and `print(f"Conductivity: {{val}} S/cm")`) exactly as is.
