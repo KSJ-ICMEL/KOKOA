@@ -1,0 +1,18 @@
+{
+  "is_success": true,
+  "conductivity": 0.0017441921926803982,
+  "diffusivity": 1.0972363239643414e-08,
+  "msd": 187.84617101459918,
+  "simulation_time_ns": 285.33228881800414,
+  "temperature_K": 300,
+  "steps": 100500,
+  "error_message": null,
+  "execution_log": "Completed 100500 steps in 285.33ns",
+  "phonon_assisted": {
+    "E_a_eV": 0.3,
+    "nu_s^-1": 10000000000000.0,
+    "f_open_min": 0.02,
+    "T_ph_K": 300.0,
+    "base_rate_s^-1": 58324712.90578759
+  }
+}

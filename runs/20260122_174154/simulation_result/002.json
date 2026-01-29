@@ -1,9 +1,0 @@
-{
-  "timestamp": "2026-01-22T17:43:33.277899",
-  "iteration": 2,
-  "is_success": true,
-  "conductivity": 5.892621e-08,
-  "conductivity_unit": "S/cm",
-  "error_message": null,
-  "execution_log": "[STDOUT]\nSupercell built: 3x3x3, total atoms = 6912\nInitialized 1609 Li ions (out of 3240 Li sites)\nConductivity: 5.892621e-08 S/cm\n\n[STDERR]\n"
-}

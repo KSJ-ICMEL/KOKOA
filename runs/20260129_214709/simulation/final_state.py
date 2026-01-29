@@ -1,0 +1,298 @@
+import os, sys, json
+import numpy as np
+from pymatgen.core import Structure
+
+# === 1. Structure Loading ===
+script_dir = os.path.dirname(os.path.abspath(__file__))
+cif_path = os.path.join(script_dir, "LLZO.cif")
+structure = Structure.from_file(cif_path)
+N = 4  # Supercell expansion
+structure.make_supercell([N, N, N])
+print(f"Supercell: {N}x{N}x{N}, Total atoms: {len(structure)}")
+
+# === 1a. Identify Li and O indices (needed for geometric bottleneck descriptor) ===
+li_indices = []
+o_indices = []
+for i, site in enumerate(structure):
+    sym = site.species.elements[0].symbol
+    if sym == "Li":
+        li_indices.append(i)
+    elif sym == "O":
+        o_indices.append(i)
+li_indices = np.array(li_indices, dtype=int)
+o_indices = np.array(o_indices, dtype=int)
+
+if len(li_indices) == 0 or len(o_indices) == 0:
+    raise RuntimeError("Structure must contain both Li and O atoms for bottleneck-based hopping network.")
+
+# Pre-compute cartesian coordinates
+cart_coords = np.array([site.coords for site in structure])
+o_cart = cart_coords[o_indices]
+
+# === 1b. Initialize Li sites with occupancy probability (restricted to true Li sites) ===
+initial_sites = []
+li_site_map = {}  # map from "Li site list index" to structure index
+for idx, s_idx in enumerate(li_indices):
+    site = structure[s_idx]
+    prob = site.species.get("Li", 0)
+    state = 1 if np.random.rand() < prob else 0
+    initial_sites.append({"coords": site.frac_coords, "state": state})
+    li_site_map[idx] = s_idx
+
+print(f"Li sites initialized: {len(initial_sites)}")
+
+# === 2. Build Adjacency Graph with Bottleneck-Based Filtering ===
+#
+# Diagnosis: a simple 4 Å Li–Li cutoff over-connects the network and ignores
+# the bottleneck geometry (Li–O distances at the transition state). To correct
+# this in a physics-grounded, but still simple way, we:
+#   1. Start from a generous Li–Li distance cutoff to collect candidate pairs.
+#   2. For each candidate pair (i, j), approximate the transition state at
+#      the midpoint between Li_i and Li_j.
+#   3. Compute the minimum Li_TS–O distance, d_min.
+#   4. Use d_min as a geometric descriptor for the bottleneck size. The
+#      internal paper states that the Na–O distance at the transition state
+#      is linearly correlated with migration barrier. We encode this by:
+#         E_ij = E_ref + alpha * (d_ref - d_min)
+#      where d_ref is a reference Na–O (here Li–O) distance (~2.36 Å) and
+#      E_ref is a reference barrier (we keep the original 0.30 eV as E_ref).
+#
+# This yields:
+#   - Smaller bottlenecks (smaller d_min) -> higher E_ij -> slower hops.
+#   - Larger bottlenecks (larger d_min)  -> lower E_ij -> faster hops.
+#
+# We also *remove* hops whose bottleneck is crystallographically too tight by
+# imposing a hard lower bound on d_min.
+
+# Generous Li-Li distance cutoff to collect candidate neighbors
+li_li_cutoff = 4.0  # Å (kept, but will be refined by bottleneck geometry)
+
+# Parameters for geometric barrier model (based on internal paper trend)
+d_ref = 2.36  # Å, Na–O distance at TS with lowest barrier, used as reference
+E_ref = 0.30  # eV, original uniform activation barrier used as reference
+alpha = 0.50  # eV/Å, strength of linear correlation (chosen within physical range)
+d_min_allowed = 1.8  # Å, discard hops with extremely tight bottlenecks
+
+# Precompute neighbor list for full structure for efficiency
+neighbors_data = structure.get_all_neighbors(r=li_li_cutoff)
+
+# Utility: compute minimum Li_TS–O distance for a candidate hop
+def compute_bottleneck_min_li_o_dist(li_i_cart, li_j_cart):
+    ts_pos = 0.5 * (li_i_cart + li_j_cart)  # simple midpoint as TS approximation
+    vecs = o_cart - ts_pos
+    dists = np.linalg.norm(vecs, axis=1)
+    return float(np.min(dists))
+
+# Build adjacency with per-edge activation barriers
+adj_list = {}           # adjacency over *Li-site indices in initial_sites* space
+edge_barriers = {}      # (src_li_index, tgt_li_index) -> E_ij (eV)
+
+# Map from structure index to "Li site list index"
+struct_to_li_site = {s_idx: li_idx for li_idx, s_idx in li_site_map.items()}
+
+for li_site_idx, s_idx in li_site_map.items():
+    adj_list[li_site_idx] = []
+    li_cart = cart_coords[s_idx]
+
+    # Inspect neighbors around this Li in the full structure
+    for nb in neighbors_data[s_idx]:
+        nb_struct_idx = nb.index
+        nb_sym = structure[nb_struct_idx].species.elements[0].symbol
+        if nb_sym != "Li":
+            continue
+        # Only consider neighbors that are in our Li site list
+        if nb_struct_idx not in struct_to_li_site:
+            continue
+
+        tgt_li_site_idx = struct_to_li_site[nb_struct_idx]
+
+        # Avoid double counting; we'll add edges in both directions symmetrically
+        if tgt_li_site_idx == li_site_idx:
+            continue
+
+        # Displacement including periodic image
+        frac_diff = structure[nb_struct_idx].frac_coords - structure[s_idx].frac_coords + nb.image
+        cart_disp = structure.lattice.get_cartesian_coords(frac_diff)
+        li_j_cart = li_cart + cart_disp
+
+        # Compute geometric bottleneck descriptor: minimum Li_TS–O distance
+        d_min = compute_bottleneck_min_li_o_dist(li_cart, li_j_cart)
+
+        # Discard hops with unrealistically tight bottlenecks (energetically forbidden)
+        if d_min < d_min_allowed:
+            continue
+
+        # Compute barrier from linear relation with Li–O TS distance
+        # E_ij = E_ref + alpha * (d_ref - d_min)
+        E_ij = E_ref + alpha * (d_ref - d_min)
+
+        # Do not allow negative barriers; clamp at a small floor if needed
+        if E_ij < 0.05:
+            E_ij = 0.05
+
+        # Store adjacency and barrier (undirected graph)
+        adj_list[li_site_idx].append((tgt_li_site_idx, cart_disp))
+        edge_barriers[(li_site_idx, tgt_li_site_idx)] = E_ij
+
+print(f"Graph built with bottleneck-based filtering (Li-Li cutoff={li_li_cutoff} Å)")
+num_edges = sum(len(nbs) for nbs in adj_list.values())
+print(f"Total directed Li-Li edges: {num_edges}")
+
+# === 3. kMC Simulator (BKL Algorithm) with per-edge barriers ===
+class KMCSimulator:
+    def __init__(self, structure, adj_list, edge_barriers, initial_sites, params):
+        self.params = params
+        self.adj_list = adj_list
+        self.edge_barriers = edge_barriers
+
+        # occupancy lives on "Li site list" index space
+        self.occupancy = np.array([s['state'] for s in initial_sites], dtype=int)
+
+        self.site_to_particle = {}
+        self.particle_positions = {}
+        p_id = 0
+        for idx, s in enumerate(initial_sites):
+            if s['state'] == 1:
+                start = structure.lattice.get_cartesian_coords(s['coords'])
+                self.site_to_particle[idx] = p_id
+                self.particle_positions[p_id] = {
+                    'start': np.array(start, dtype=float),
+                    'current': np.array(start, dtype=float)
+                }
+                p_id += 1
+
+        self.li_indices = set(self.site_to_particle.keys())
+        self.num_particles = len(self.li_indices)
+        self.current_time = 0.0
+        self.step_count = 0
+
+        self.kb = 8.617e-5  # eV/K
+        self.nu = params['nu']
+        self.T = params['T']
+
+    def _hop_rate(self, E_a):
+        # Arrhenius rate: k = nu * exp(-E_a / (k_B T))
+        return self.nu * np.exp(-E_a / (self.kb * self.T))
+
+    def run_step(self):
+        events = []
+        cumulative_rates = []
+        total_rate = 0.0
+
+        for src in list(self.li_indices):
+            for tgt, vec in self.adj_list.get(src, []):
+                if self.occupancy[tgt] == 0:
+                    E_ij = self.edge_barriers.get((src, tgt), None)
+                    if E_ij is None:
+                        # Should not happen if adj_list and edge_barriers are consistent;
+                        # skip if it does
+                        continue
+                    rate = self._hop_rate(E_ij)
+                    if rate <= 0.0:
+                        continue
+                    total_rate += rate
+                    events.append((src, tgt, vec))
+                    cumulative_rates.append(total_rate)
+
+        if total_rate == 0.0:
+            return False  # Deadlock: no possible hops
+
+        # BKL time advance
+        xi = np.random.rand()
+        self.current_time += -np.log(xi) / total_rate
+        self.step_count += 1
+
+        # Select and execute event
+        r = np.random.uniform(0.0, total_rate)
+        idx = np.searchsorted(cumulative_rates, r)
+        src, tgt, vec = events[idx]
+
+        p_id = self.site_to_particle.pop(src)
+        self.particle_positions[p_id]['current'] += vec
+        self.occupancy[src], self.occupancy[tgt] = 0, 1
+        self.site_to_particle[tgt] = p_id
+        self.li_indices.discard(src)
+        self.li_indices.add(tgt)
+        return True
+
+    def calculate_properties(self):
+        if self.current_time == 0.0 or self.num_particles == 0:
+            return 0.0, 0.0
+        msd = np.mean(
+            [np.sum((p['current'] - p['start']) ** 2) for p in self.particle_positions.values()]
+        )  # Å^2
+        D = msd / (6.0 * self.current_time) * 1e-16  # cm^2/s
+        n = self.num_particles / (self.params['volume'] * 1e-24)  # ions/cm^3
+        sigma = (n * (1.602e-19) ** 2 * D) / (1.38e-23 * self.params['T'])  # S/cm
+        return msd, sigma
+
+# === 4. Run Simulation ===
+sim_params = {
+    'T': 300,
+    'E_a': E_ref,  # kept for record; per-edge barriers override in dynamics
+    'nu': 1e13,
+    'volume': structure.volume
+}
+sim = KMCSimulator(structure, adj_list, edge_barriers, initial_sites, sim_params)
+
+target_time = 1000e-9  # 1000 ns timeout
+log_interval = 100
+sigma_history = []
+
+while sim.current_time < target_time:
+    if not sim.run_step():
+        print("Deadlock - stopping")
+        break
+    if sim.step_count % log_interval == 0:
+        msd, sigma = sim.calculate_properties()
+        sigma_history.append(sigma)
+
+        # Check convergence (moving window of last 1000 samples)
+        if len(sigma_history) > 1000:
+            sigma_history.pop(0)
+
+        if len(sigma_history) == 1000:
+            avg_sigma = np.mean(sigma_history)
+            std_sigma = np.std(sigma_history)
+            rsd = std_sigma / avg_sigma if avg_sigma > 0 else 0.0
+
+            print(
+                f"Step {sim.step_count}: {sim.current_time*1e9:.2f}ns, "
+                f"MSD={msd:.2f}Å^2, sigma={sigma*1e3:.4f}mS/cm, RSD={rsd*100:.2f}%"
+            )
+
+            if rsd < 0.05:  # 5% convergence criteria
+                print(f"Convergence reached (RSD < 5%) at {sim.current_time*1e9:.2f}ns")
+                break
+        else:
+            print(
+                f"Step {sim.step_count}: {sim.current_time*1e9:.2f}ns, "
+                f"MSD={msd:.2f}Å^2, sigma={sigma*1e3:.4f}mS/cm"
+            )
+
+# Final result
+msd, sigma = sim.calculate_properties()
+D = msd / (6.0 * sim.current_time) * 1e-16 if sim.current_time > 0 else 0.0
+
+print(f"\n=== Simulation Complete ===")
+print(f"T={sim_params['T']}K, Time={sim.current_time*1e9:.2f}ns")
+print(f"D={D:.4e} cm^2/s")
+print(f"Conductivity: {sigma:.4e} S/cm")
+
+# Save result to JSON
+result = {
+    "is_success": True,
+    "conductivity": sigma,
+    "diffusivity": D,
+    "msd": msd,
+    "simulation_time_ns": sim.current_time * 1e9,
+    "temperature_K": sim_params['T'],
+    "steps": sim.step_count,
+    "error_message": None,
+    "execution_log": f"Completed {sim.step_count} steps in {sim.current_time*1e9:.2f}ns"
+}
+
+result_path = os.path.join(os.path.dirname(__file__), "initial_state.json")
+with open(result_path, 'w', encoding='utf-8') as f:
+    json.dump(result, f, indent=2)
+print(f"\nSaved result to: {result_path}")

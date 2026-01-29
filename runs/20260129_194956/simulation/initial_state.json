@@ -1,0 +1,11 @@
+{
+  "is_success": true,
+  "conductivity": 0.002713256129546691,
+  "diffusivity": 1.7068550094714484e-08,
+  "msd": 185.78930211308483,
+  "simulation_time_ns": 181.41484492641732,
+  "temperature_K": 300,
+  "steps": 100000,
+  "error_message": null,
+  "execution_log": "Completed 100000 steps in 181.41ns"
+}

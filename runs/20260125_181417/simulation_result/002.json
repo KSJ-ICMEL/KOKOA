@@ -1,9 +1,0 @@
-{
-  "timestamp": "2026-01-25T18:15:57.759652",
-  "iteration": 2,
-  "is_success": false,
-  "conductivity": null,
-  "conductivity_unit": "S/cm",
-  "error_message": "  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260125_181417\\simulation\\021.py\", line 96\n    for nb_idx,\n               ^\nSyntaxError: invalid syntax\n",
-  "execution_log": "[STDOUT]\n\n[STDERR]\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260125_181417\\simulation\\021.py\", line 96\n    for nb_idx,\n               ^\nSyntaxError: invalid syntax\n"
-}

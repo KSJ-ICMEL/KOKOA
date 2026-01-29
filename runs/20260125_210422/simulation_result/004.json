@@ -1,9 +1,0 @@
-{
-  "timestamp": "2026-01-25T21:16:49.259671",
-  "iteration": 4,
-  "is_success": true,
-  "conductivity": 1.6739e-08,
-  "conductivity_unit": "S/cm",
-  "error_message": null,
-  "execution_log": "[STDOUT]\nSupercell: 4x4x4, Total atoms: 13312\nSupercell: 4x4x4, Total atoms: 851968\nLi sites initialized: 294912\nGraph built (cutoff=4.0A)\nStep 100: 896.08ns, MSD=0.01A^2, sigma=0.0000mS/cm\n\n=== Simulation Complete ===\nT=298K, Time=1000.70ns\nD=1.0460e-13 cm^2/s\nConductivity: 1.6739e-08 S/cm\n\nSaved result to: C:\\Users\\sjkim\\KOKOA\\runs\\20260125_210422\\simulation\\initial_state.json\n\n[STDERR]\n"
-}

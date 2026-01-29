@@ -1,0 +1,11 @@
+{
+  "is_success": true,
+  "conductivity": 0.00014513535697183516,
+  "diffusivity": 9.130174199226508e-10,
+  "msd": 54.783739941070884,
+  "simulation_time_ns": 1000.0491912065975,
+  "temperature_K": 300,
+  "steps": 33569,
+  "error_message": null,
+  "execution_log": "Completed 33569 steps in 1000.05ns with path-specific migration barriers."
+}

@@ -1,9 +1,0 @@
-{
-  "timestamp": "2026-01-26T09:58:11.255576",
-  "iteration": 4,
-  "is_success": true,
-  "conductivity": 2.508e-15,
-  "conductivity_unit": "S/cm",
-  "error_message": null,
-  "execution_log": "[STDOUT]\nSupercell: 4x4x4, Total atoms: 13312\nLi sites initialized: 4608\nGraph built (cutoff=4.0A)\nFinal conductivity: 2.508e-15 S/m after 6.158e-01 s and 1 steps\n\n[STDERR]\n"
-}

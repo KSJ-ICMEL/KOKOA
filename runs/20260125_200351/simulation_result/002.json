@@ -1,9 +1,0 @@
-{
-  "timestamp": "2026-01-25T20:05:19.533188",
-  "iteration": 2,
-  "is_success": false,
-  "conductivity": null,
-  "conductivity_unit": "S/cm",
-  "error_message": "Runtime Error: CIF file not found: C:\\Users\\sjkim\\KOKOA\\runs\\20260125_200351\\simulation\\LLZO.cif\nTraceback (most recent call last):\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260125_200351\\simulation\\021.py\", line 28, in <module>\n    raise FileNotFoundError(f\"CIF file not found: {cif_path}\")\nFileNotFoundError: CIF file not found: C:\\Users\\sjkim\\KOKOA\\runs\\20260125_200351\\simulation\\LLZO.cif\n",
-  "execution_log": "[STDOUT]\n\n[STDERR]\nRuntime Error: CIF file not found: C:\\Users\\sjkim\\KOKOA\\runs\\20260125_200351\\simulation\\LLZO.cif\nTraceback (most recent call last):\n  File \"C:\\Users\\sjkim\\KOKOA\\runs\\20260125_200351\\simulation\\021.py\", line 28, in <module>\n    raise FileNotFoundError(f\"CIF file not found: {cif_path}\")\nFileNotFoundError: CIF file not found: C:\\Users\\sjkim\\KOKOA\\runs\\20260125_200351\\simulation\\LLZO.cif\n"
-}
