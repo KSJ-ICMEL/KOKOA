@@ -93,13 +93,6 @@ def create_run_directory(run_id: str) -> str:
     run_dir = os.path.join(Config.RUNS_DIR, run_id)
     
     os.makedirs(os.path.join(run_dir, "simulation"), exist_ok=True)
-    os.makedirs(os.path.join(run_dir, "pdf_store"), exist_ok=True)
-    
-    initial_chroma = Config.PERSIST_DIRECTORY
-    if os.path.exists(initial_chroma):
-        run_chroma = os.path.join(run_dir, "pdf_store")
-        if not os.listdir(run_chroma):
-            shutil.copytree(initial_chroma, run_chroma, dirs_exist_ok=True)
     
     return run_dir
 

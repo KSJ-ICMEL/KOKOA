@@ -241,9 +241,16 @@ def archivist_node(state: AgentState, llm) -> dict:
         
         print(f"   -> Report Generated ({len(report)} chars)")
         
-        # Extract assumption ID from target (e.g., "A1", "A2")
+        # Extract assumption ID from goal or target_assumption (e.g., "Relax A1" -> "A1")
         import re
-        assumption_id_match = re.search(r'\b(A\d+)\b', target, re.IGNORECASE)
+        goal_text = state.get("goal", "")
+        target_assumption = state.get("target_assumption", "")
+        
+        # Try goal first, then target_assumption
+        assumption_id_match = re.search(r'\b(A\d+)\b', goal_text, re.IGNORECASE)
+        if not assumption_id_match:
+            assumption_id_match = re.search(r'\b(A\d+)\b', target_assumption, re.IGNORECASE)
+        
         target_assumption_id = assumption_id_match.group(1).upper() if assumption_id_match else ""
         
         # 1. Save to Vector Store (embedding-only: Analysis + Advice)
@@ -255,7 +262,6 @@ def archivist_node(state: AgentState, llm) -> dict:
                 "run_id": state.get("run_id"),
                 "type": "BATCH",
                 "result_type": result_type,
-                "target": target,
                 "target_assumption_id": target_assumption_id  # For filtering
             },
             force=True

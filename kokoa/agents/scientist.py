@@ -372,7 +372,7 @@ def scientist_node(state: AgentState, knowledge_retriever, llm) -> dict:
         "current_code": python_code,
         "iteration_count": iteration,
         "relaxed_hurdles": [batch_summary], 
-        "target_assumption": target,
+        "target_assumption": assumption_id if assumption_id else target,  # Store assumption ID (e.g., "A1")
         "research_log": state["research_log"] + [f"Scientist: Implemented {target}"]
     }
 
