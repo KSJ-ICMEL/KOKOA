@@ -42,7 +42,9 @@ def _get_vector_store(collection: str, run_dir: str = None) -> Chroma:
     if run_dir:
         persist_dir = os.path.join(run_dir, collection)
     else:
-        persist_dir = os.path.join(Config.INITIAL_STATE_DIR, collection)
+        # technical_reports -> technical_report_store for consistency
+        folder_name = "technical_report_store" if collection == "technical_reports" else collection
+        persist_dir = os.path.join(Config.INITIAL_STATE_DIR, folder_name)
     
     os.makedirs(persist_dir, exist_ok=True)
     
@@ -69,7 +71,7 @@ def save_to_memory(
     
     Args:
         content: Text content to save
-        collection: One of 'papers', 'experiments', 'skills', 'insights'
+        collection: One of 'papers', 'technical_reports'
         metadata: Optional metadata dict
         run_dir: Run-specific directory (None for global memory)
         force: Bypass permission check (use with caution)
@@ -102,17 +104,19 @@ def search_memory(
     collection: str,
     k: int = 3,
     run_dir: str = None,
-    include_global: bool = True
+    include_global: bool = True,
+    filter: Dict[str, Any] = None
 ) -> List[Dict[str, Any]]:
     """
     Search unified memory
     
     Args:
         query: Search query
-        collection: One of 'papers', 'experiments', 'skills', 'insights'
+        collection: One of 'papers', 'technical_reports'
         k: Number of results to return
         run_dir: Run-specific directory
         include_global: Also search global memory (initial_state/memory/)
+        filter: Metadata filter (e.g. {"result_type": "FAILURE"})
     
     Returns:
         List of results with 'content' and 'metadata' keys
@@ -122,7 +126,7 @@ def search_memory(
     if run_dir:
         try:
             store = _get_vector_store(collection, run_dir)
-            docs = store.similarity_search(query, k=k)
+            docs = store.similarity_search(query, k=k, filter=filter)
             for doc in docs:
                 results.append({
                     "content": doc.page_content,
@@ -135,7 +139,7 @@ def search_memory(
     if include_global:
         try:
             global_store = _get_vector_store(collection, run_dir=None)
-            docs = global_store.similarity_search(query, k=k)
+            docs = global_store.similarity_search(query, k=k, filter=filter)
             for doc in docs:
                 results.append({
                     "content": doc.page_content,
@@ -148,7 +152,7 @@ def search_memory(
     seen = set()
     unique_results = []
     for r in results:
-        key = r["content"][:100]
+        key = r["content"][:2000]
         if key not in seen:
             seen.add(key)
             unique_results.append(r)
@@ -176,7 +180,7 @@ def format_memory_context(results: List[Dict[str, Any]], prefix: str = "") -> st
     lines = [f"{prefix}[Memory Search Results]"]
     for i, r in enumerate(results, 1):
         source = r.get("source", "unknown")
-        content = r["content"][:500]
+        content = r["content"]
         lines.append(f"{prefix}[{i}] ({source}) {content}")
     
     return "\n".join(lines)

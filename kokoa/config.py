@@ -27,9 +27,9 @@ class Config:
         "gpt-oss:120b",
         "gemini-2.5-pro",
         "gemini-3-flash-preview",
+        "gpt-5.1-2025-11-13"
     ]
-    TEMPERATURE = 0.1
-    THINKING_LEVEL = 'high'
+    TEMPERATURE = 0.3
     
     EMBEDDING_MODEL = "BAAI/bge-m3"
     EMBEDDING_DEVICE = get_device()  # Auto-detect: cuda, mps, or cpu
@@ -49,27 +49,15 @@ class Config:
     CHUNK_SIZE = 1200
     CHUNK_OVERLAP = 300
     
-    ARXIV_MAX_DOCS = 3
-    
     # Simulation parameters
     SIMULATION_TIME = 1000e-9  # Timeout for simulation (1000ns), convergence-based termination is primary
     TARGET_CONDUCTIVITY = 1.97e-6  # Target: experimental LLZO conductivity (S/cm)
+    INITIAL_CONDUCTIVITY = 2.49e-3  # Initial baseline (from initial_state.json)
     CIF_FILENAME = "LLZO.cif"  # CIF file name in project root
     
     # Timeout settings (unified)
-    TIMEOUT = 1800  # 30 minutes for all operations
-    
-    # Memory permission control
-    # Only high-quality models can write to unified memory (prevent hallucination pollution)
-    MEMORY_WRITE_ALLOWED_MODELS = [
-        "gpt-oss:120b"
-    ]
-    
-    @classmethod
-    def can_write_memory(cls) -> bool:
-        """Check if current model has permission to write to unified memory"""
-        return cls.MODEL_NAME in cls.MEMORY_WRITE_ALLOWED_MODELS
-    
+    TIMEOUT = 3600  # 1 hour for all operations
+       
     @classmethod
     def from_env(cls):
         config = cls()

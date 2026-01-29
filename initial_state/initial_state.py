@@ -3,7 +3,8 @@ import numpy as np
 from pymatgen.core import Structure
 
 # === 1. Structure Loading ===
-cif_path = "LLZO.cif"
+script_dir = os.path.dirname(os.path.abspath(__file__))
+cif_path = os.path.join(script_dir, "LLZO.cif")
 structure = Structure.from_file(cif_path)
 N = 4  # Supercell expansion
 structure.make_supercell([N, N, N])
@@ -100,7 +101,7 @@ class KMCSimulator:
         return msd, sigma
 
 # === 4. Run Simulation ===
-sim_params = {'T': 298, 'E_a': 0.30, 'nu': 1e13, 'volume': structure.volume}
+sim_params = {'T': 300, 'E_a': 0.30, 'nu': 1e13, 'volume': structure.volume}
 sim = KMCSimulator(structure, adj_list, initial_sites, sim_params)
 
 target_time = 1000e-9  # 1000ns timeout

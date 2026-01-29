@@ -1,19 +1,13 @@
 """
-KOKOA Graph Assembly
-====================
-3-Agent Architecture:
-- Scientist: Entry point, knowledge search, code generation, END decision
-- CodeAgent: Execution + debugging  
-- Archivist: Knowledge archiving (receives from all agents, no routing decisions)
-
-Flow:
-  Scientist (entry) → CodeAgent → Archivist → Scientist (loop)
-      ↓
-     END (when Scientist decides target achieved)
+KOKOA Graph Assembly - Single Pass
+==================================
+Linear Pipeline: Scientist -> Simulator -> Archivist -> END.
 """
 
 import sys
 import uuid
+import os
+from datetime import datetime
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 
@@ -40,39 +34,23 @@ class TeeWriter:
         self.file.close()
 
 
-def scientist_router(state: AgentState) -> str:
-    """Scientist decides: generate code or finish"""
-    status = state.get("status", "CONTINUE")
-    
-    if status == "FINISH":
-        print("[Router] Scientist decided: FINISH")
-        return "end"
-    
-    return "code_agent"
-
-
-def build_workflow(scientist_node, code_agent_node, archivist_node):
+def build_workflow(scientist_node, simulator_node, archivist_node):
     """
-    Build KOKOA workflow
-    
-    Entry: Scientist
-    Flow: Scientist → CodeAgent → Archivist → Scientist (loop)
-    End: Scientist decides when target is achieved
+    Build KOKOA Single-Pass Workflow
+    Scientist guarantees a new batch of code.
+    Simulator runs it.
+    Archivist reports and ends.
     """
     workflow = StateGraph(AgentState)
     
     workflow.add_node("Scientist", scientist_node)
-    workflow.add_node("CodeAgent", code_agent_node)
+    workflow.add_node("Simulator", simulator_node)
     workflow.add_node("Archivist", archivist_node)
     
-    workflow.add_conditional_edges(
-        "Scientist",
-        scientist_router,
-        {"code_agent": "CodeAgent", "end": END}
-    )
-    
-    workflow.add_edge("CodeAgent", "Archivist")
-    workflow.add_edge("Archivist", "Scientist")
+    # Linear Flow
+    workflow.add_edge("Scientist", "Simulator")
+    workflow.add_edge("Simulator", "Archivist")
+    workflow.add_edge("Archivist", END)
     
     workflow.set_entry_point("Scientist")
     
@@ -86,62 +64,42 @@ def run_experiment(app, goal: str, thread_id: str = None):
     if thread_id is None:
         thread_id = str(uuid.uuid4())
     
-    recursion_limit = Config.MAX_LOOPS * 4 + 20
-    config = {"configurable": {"thread_id": thread_id}, "recursion_limit": recursion_limit}
+    # Recursion limit minimal since it's single pass
+    config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 100}
     initial_state = create_initial_state(goal)
     
     run_dir = initial_state.get("run_dir", "unknown")
     run_id = initial_state.get("run_id", thread_id)
     
-    import os
     output_path = os.path.join(run_dir, "output.txt")
     tee = TeeWriter(output_path)
     original_stdout = sys.stdout
     sys.stdout = tee
     
-    print(f"🚀 KOKOA Start (Run: {run_id})")
+    print(f"🚀 KOKOA Start (Run: {run_id}) [Single-Pass Batch]")
     print(f"📁 Output: {run_dir}")
     print(f"🎯 Goal: {goal}")
-    print(f"🔧 Model: {Config.MODEL_NAME} (memory write: {Config.can_write_memory()})")
+    print(f"🔧 Model: {Config.MODEL_NAME}")
     print("\n" + "=" * 60 + "\n")
     
     final_state = None
     try:
         for event in app.stream(initial_state, config):
             for node_name, node_output in event.items():
-                print(f"\n{'='*20} [{node_name}] {'='*20}")
-                
-                if node_name == "Scientist":
-                    status = node_output.get('status', 'CONTINUE')
-                    hyp = node_output.get('hypothesis', '')[:100]
-                    code_len = len(node_output.get('python_code', ''))
-                    print(f"Status: {status}")
-                    print(f"Hypothesis: {hyp}...")
-                    print(f"Code: {code_len} bytes")
-                
-                elif node_name == "CodeAgent":
-                    result = node_output.get("simulation_output")
-                    if result:
-                        print(f"Success: {result.is_success}")
-                        print(f"Conductivity: {result.conductivity} S/cm")
-                        if result.error_message and not result.is_success:
-                            print(f"Error: {result.error_message[:100]}...")
-                
-                elif node_name == "Archivist":
-                    print("Archived experiment data to memory")
-                
-                print()
+                # Node output is already printed by nodes themselves mostly
+                # We can just update final state
                 final_state = node_output
         
         print("\n" + "=" * 60)
         print("🏁 Experiment Complete")
         
         if final_state:
-            result = final_state.get("simulation_output") or initial_state.get("simulation_output")
+            result = final_state.get("simulation_output")
             if result and result.conductivity:
                 target = Config.TARGET_CONDUCTIVITY
-                error = abs(target - result.conductivity) / target * 100
-                print(f"📊 Final: σ = {result.conductivity} S/cm (error: {error:.1f}%)")
+                import math
+                log_error = math.log10(result.conductivity) - math.log10(target)  # Signed
+                print(f"📊 Final: σ = {result.conductivity:.2e} S/cm | log(σ) = {math.log10(result.conductivity):.2f} | error = {log_error:+.2f} orders")
         
     except Exception as e:
         print(f"\n🚨 Error: {e}")
@@ -160,7 +118,6 @@ def visualize(app, save_path: str = None):
         png_data = app.get_graph().draw_mermaid_png()
         
         if save_path:
-            import os
             os.makedirs(os.path.dirname(save_path) if os.path.dirname(save_path) else ".", exist_ok=True)
             with open(save_path, "wb") as f:
                 f.write(png_data)
@@ -179,16 +136,11 @@ def visualize(app, save_path: str = None):
                 
     except Exception as e:
         print(f"Visualization failed: {e}")
-        print("Requires: pip install grandalf")
         return None
 
 
 def save_graph_png(app, output_dir: str = ".") -> str:
-    import os
-    from datetime import datetime
-    
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"kokoa_workflow_{timestamp}.png"
     filepath = os.path.join(output_dir, filename)
-    
     return visualize(app, save_path=filepath)

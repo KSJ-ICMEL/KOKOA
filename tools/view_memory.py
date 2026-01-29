@@ -60,22 +60,10 @@ def get_all_data() -> dict:
         data["pdfs"] = get_collection_documents(PDF_STORE)
         print(f"  - PDFs: {len(data['pdfs'])} docs")
     
-    # Technical reports (Global)
-    reports_path = os.path.join(BASE_DIR, "initial_state", "technical_reports")
+    # Technical reports (Global only - saved by archivist via memory.py)
+    reports_path = os.path.join(BASE_DIR, "initial_state", "technical_report_store")
     if os.path.exists(reports_path):
-        data["technical_reports"].extend(get_collection_documents(reports_path))
-    
-    # Technical reports (Runs - latest 5)
-    runs_dir = os.path.join(BASE_DIR, "runs")
-    if os.path.exists(runs_dir):
-        run_folders = sorted([os.path.join(runs_dir, d) for d in os.listdir(runs_dir)], key=os.path.getmtime, reverse=True)[:5]
-        for run in run_folders:
-            run_reports = os.path.join(run, "technical_reports")
-            if os.path.exists(run_reports):
-                docs = get_collection_documents(run_reports)
-                for doc in docs:
-                    doc["source"] = f"Run {os.path.basename(run)}"
-                data["technical_reports"].extend(docs)
+        data["technical_reports"] = get_collection_documents(reports_path)
                 
     print(f"  - Reports: {len(data['technical_reports'])} docs")
     

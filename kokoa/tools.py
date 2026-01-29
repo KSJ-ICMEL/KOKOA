@@ -1,8 +1,7 @@
 """
 KOKOA Tools Module
 ==================
-CASCADE 스타일의 도구 모음:
-- Web Search (DuckDuckGo - 무료)
+- Web Search (Tavily)
 - Code Extraction from URLs
 - Python Introspection
 """
@@ -20,9 +19,9 @@ import requests
 from bs4 import BeautifulSoup
 
 
-def web_search(query: str, max_results: int = 5, search_depth: str = "advanced") -> List[Dict[str, str]]:
+def web_search(query: str, max_results: int = 5, search_depth: str = "basic") -> List[Dict[str, str]]:
     """
-    Web search using Tavily (AI-optimized search engine used in CASCADE)
+    Web search using Tavily (AI-optimized search engine)
     
     Requires TAVILY_API_KEY environment variable.
     Get API key at: https://app.tavily.com
@@ -30,67 +29,55 @@ def web_search(query: str, max_results: int = 5, search_depth: str = "advanced")
     Args:
         query: Search query
         max_results: Maximum number of results (default: 5)
-        search_depth: "basic" or "advanced" (default: advanced for better code examples)
+        search_depth: "basic" (fast) or "advanced" (comprehensive, 2x credits)
     
     Returns:
         List of {"title": ..., "url": ..., "snippet": ..., "content": ...}
     """
-    import os
-    
     api_key = os.getenv("TAVILY_API_KEY")
     
-    if api_key:
-        try:
-            from langchain_community.tools.tavily_search import TavilySearchResults
-            
-            tavily = TavilySearchResults(
-                max_results=max_results,
-                search_depth=search_depth,
-                include_answer=True,
-                include_raw_content=False
-            )
-            
-            raw_results = tavily.invoke(query)
-            
-            results = []
-            if isinstance(raw_results, list):
-                for r in raw_results:
-                    results.append({
-                        "title": r.get("title", ""),
-                        "url": r.get("url", ""),
-                        "snippet": r.get("content", "")[:500],
-                        "content": r.get("content", "")
-                    })
-            
-            print(f"   [Tavily] Found {len(results)} results for: {query[:50]}...")
-            return results
-            
-        except ImportError:
-            print("   [Tavily] langchain-community not installed. Falling back to DuckDuckGo.")
-        except Exception as e:
-            print(f"   [Tavily] Error: {e}. Falling back to DuckDuckGo.")
+    if not api_key:
+        print("   [Tavily] TAVILY_API_KEY not set")
+        return []
     
     try:
-        from duckduckgo_search import DDGS
+        from langchain_community.tools.tavily_search import TavilySearchResults
+        
+        # Scientific domain filter
+        SCIENCE_DOMAINS = [
+            "arxiv.org", "nature.com", "science.org", "acs.org",
+            "springer.com", "wiley.com", "rsc.org", "aps.org",
+            "sciencedirect.com", "researchgate.net", "github.com"
+        ]
+        
+        tavily = TavilySearchResults(
+            max_results=max_results,
+            search_depth=search_depth,
+            include_answer=True,
+            include_raw_content=False,
+            include_domains=SCIENCE_DOMAINS
+        )
+        
+        raw_results = tavily.invoke(query)
         
         results = []
-        with DDGS() as ddgs:
-            for r in ddgs.text(query, max_results=max_results):
+        if isinstance(raw_results, list):
+            for r in raw_results:
                 results.append({
                     "title": r.get("title", ""),
-                    "url": r.get("href", ""),
-                    "snippet": r.get("body", ""),
-                    "content": r.get("body", "")
+                    "url": r.get("url", ""),
+                    "snippet": r.get("content", "")[:500],  # Limit snippet length
+                    "content": r.get("content", "")
                 })
         
-        print(f"   [DuckDuckGo] Found {len(results)} results for: {query[:50]}...")
+        print(f"   [Tavily] Found {len(results)} results for: {query[:50]}...")
         return results
         
     except ImportError:
-        print("   [WebSearch] No search backend available. Install: pip install duckduckgo-search")
+        print("   [Tavily] langchain-community not installed")
         return []
     except Exception as e:
-        print(f"   [WebSearch] Error: {e}")
+        print(f"   [Tavily] Error: {e}")
         return []
 
 
@@ -254,7 +241,7 @@ def runtime_probe(code_snippet: str, variable_name: str = None) -> Dict[str, Any
             if not name.startswith('_'):
                 result["variables"][name] = {
                     "type": type(value).__name__,
-                    "value": str(value)[:200] if not callable(value) else f"<{type(value).__name__}>"
+                    "value": str(value)[:1000] if not callable(value) else f"<{type(value).__name__}>"
                 }
         
         if variable_name and variable_name in local_vars:
@@ -326,7 +313,7 @@ def format_search_results(results: List[Dict[str, str]]) -> str:
     for i, r in enumerate(results, 1):
         lines.append(f"[{i}] {r['title']}")
         lines.append(f"    URL: {r['url']}")
-        lines.append(f"    {r['snippet'][:200]}")
+        lines.append(f"    {r['snippet']}")
         lines.append("")
     
     return "\n".join(lines)
@@ -340,7 +327,7 @@ def format_code_blocks(blocks: List[str]) -> str:
     lines = []
     for i, code in enumerate(blocks[:3], 1):
         lines.append(f"--- Code Block {i} ---")
-        lines.append(code[:1000])
+        lines.append(code)
         lines.append("")
     
     return "\n".join(lines)

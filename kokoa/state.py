@@ -28,21 +28,20 @@ class SimulationResult(BaseModel):
     error_message: Optional[str] = Field(None)
     execution_log: str = Field(...)
     image_path: Optional[str] = Field(None)
+    log_error: Optional[float] = Field(None)
 
 
 class AgentState(TypedDict):
     # Core
     goal: str
     hypothesis: str
-    python_code: str
+    current_code: str
     previous_code: str  # For diff generation in Archivist
-    last_valid_code: str
-    scientist_code: Optional[str] # Original code from Scientist (before fixes)
-    debug_summary: Optional[str] # Summary of fixes by CodeAgent
-    
+
     # Simulation
     simulation_output: Optional[SimulationResult]
     current_log_error: Optional[float]
+    conductivity_history: List[dict]
     
     # Flow control
     research_log: List[str]
@@ -51,9 +50,8 @@ class AgentState(TypedDict):
     
     # Assumptions
     assumptions_checklist: List[AssumptionItem]
-    current_focus_assumption: Optional[str]
-    focused_assumption_summary: Optional[FocusedAssumptionSummary]
-    discovered_gaps: List[str]
+    relaxed_hurdles: List[dict] # [{id, name, reason, changes}, ...]
+    target_assumption: Optional[str] # Single assumption targeted in this run
     
     # Runtime
     run_id: str
@@ -75,7 +73,8 @@ def load_initial_result() -> Optional[SimulationResult]:
         conductivity=data.get("conductivity"),
         error_message=data.get("error_message"),
         execution_log=data.get("execution_log", ""),
-        image_path=data.get("image_path")
+        image_path=data.get("image_path"),
+        log_error=data.get("log_error")
     )
 
 
@@ -94,9 +93,7 @@ def create_run_directory(run_id: str) -> str:
     run_dir = os.path.join(Config.RUNS_DIR, run_id)
     
     os.makedirs(os.path.join(run_dir, "simulation"), exist_ok=True)
-    os.makedirs(os.path.join(run_dir, "simulation_result"), exist_ok=True)
     os.makedirs(os.path.join(run_dir, "pdf_store"), exist_ok=True)
-    os.makedirs(os.path.join(run_dir, "pdf"), exist_ok=True)
     
     initial_chroma = Config.PERSIST_DIRECTORY
     if os.path.exists(initial_chroma):
@@ -130,15 +127,13 @@ def create_initial_state(goal: str, run_id: str = None) -> AgentState:
         # Core
         "goal": goal,
         "hypothesis": "",
-        "python_code": initial_code,
-        "previous_code": "",
-        "last_valid_code": initial_code,
-        "scientist_code": initial_code,
-        "debug_summary": "",
-        
+        "previous_code": initial_code,
+        "current_code": "",
+
         # Simulation
         "simulation_output": initial_result,
-        "current_log_error": 10.0,
+        "current_log_error": initial_result.log_error if initial_result and initial_result.log_error is not None else 10.0,
+        "conductivity_history": [],
         
         # Flow control
         "research_log": [f"--- Run {run_id} Started ---"],
@@ -147,9 +142,8 @@ def create_initial_state(goal: str, run_id: str = None) -> AgentState:
         
         # Assumptions
         "assumptions_checklist": assumptions,
-        "current_focus_assumption": None,
-        "focused_assumption_summary": None,
-        "discovered_gaps": [],
+        "relaxed_hurdles": [],
+        "target_assumption": "",
         
         # Runtime
         "run_id": run_id,

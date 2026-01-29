@@ -1,87 +1,106 @@
 """
-Archivist Agent - LLM-Powered Knowledge Archiving Specialist
-============================================================
-- 기술 보고서 생성 (Diff, Result, Discussion)
-- Tavily 검색으로 레퍼런스 수집
-- 로그 스케일 오차율 계산
+Archivist Agent - Batch Mode
+============================
+Generates technical reports for single-pass batch updates.
+Analyzes Success/Failure of the holistic strategy.
 """
 
 import difflib
 import math
 import os
+import json
 from datetime import datetime
-from typing import Optional
+from typing import List
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
 from kokoa.config import Config
 from kokoa.state import AgentState
-
+from kokoa.tools import web_search, format_search_results
 
 # ============================================================
 # Technical Report Prompt
 # ============================================================
 ANALYSIS_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", """You are a scientific analyst reviewing kMC simulation experiments.
+    ("system", """You are a scientific analyst reviewing a kMC simulation update.
 
-Your task is to analyze the experiment and write a technical report.
+**TASK:**
+Write a concise Technical Report. This will be stored in a vector database for future scientists to learn from.
 
-Classification criteria:
-- SUCCESS: Hypothesis correctly implemented AND log error decreased
-- NEUTRAL: Hypothesis correctly implemented BUT log error increased  
-- FAILURE: Code error prevented conductivity calculation
+**GUIDELINES:**
+1. Classify as SUCCESS (error decreased), NEUTRAL (no change), or FAILURE (error/crash).
+2. Explain WHY it succeeded or failed using physics principles.
+3. Cite the provided references to support your analysis.
+4. Provide actionable advice for future experiments.
 
-**Write the report in exactly this format:**
-
+**REPORT FORMAT:**
 ## Result: [SUCCESS/NEUTRAL/FAILURE]
 
-## Code Changes
-(Copy the whole diff from [Code Diff] section here.)
+## Analysis
+(Why did it succeed or fail? What physics principles apply? Review the code changes briefly.)
 
-## Discussion
-(Analyze WHY this result occurred. Reference the provided sources if relevant, or explain based on physics principles.)
-
-References (if provided):
-{references}
+## Advice for Future Scientists
+(2-3 specific, actionable recommendations)
+- If SUCCESS: What to try next?
+- If FAILURE: What to avoid and what alternatives exist?
 """),
     ("user", """
-[Hypothesis]: {hypothesis}
+**CONTEXT**
+- Strategy: {strategy}
+- Target Assumptions: {targets}
+- Result: {result_type}
 
-[Code Diff]:
-```diff
-{diff}
-```
+**DATA**
+[Error Analysis]:
+- Initial Log Error: {prev_log_error:+.2f} (vs experiment, positive = overestimate)
+- Final Log Error: {curr_log_error:+.2f} (vs experiment, positive = overestimate)
+- Improved: {improved} (|Final| < |Initial| means closer to experiment)
+- Direction: {direction}
+
+[Code Diff Summary]:
+{diff_summary}
 
 [Execution Result]:
 - Success: {is_success}
-- Conductivity: {conductivity} S/cm
-- Previous Log Error: {prev_log_error:.2f} orders
-- Current Log Error: {curr_log_error:.2f} orders
-- Error Delta: {error_delta:+.2f} orders
+- Target Log Conductivity: {target_log}
+- Result Log Conductivity: {result_log}
+- Error Message: {error_message}
 
-[Error Message (if any)]:
-{error_message}
+[Scientist Analysis (Batch Details)]:
+{batch_details_str}
 
-[Code Agent Fix Report]:
-{debug_summary}
-
-Write the technical report:
+Write the report.
 """)
 ])
 
+# ============================================================
+# Search Query Generation Prompt
+# ============================================================
+SEARCH_QUERY_PROMPT = ChatPromptTemplate.from_messages([
+    ("system", "You are a researcher preparing to write a technical report on a kMC simulation update."),
+    ("user", """
+    Context:
+    - Strategy: {strategy}
+    - Relaxed Assumptions: {relaxed_hurdles_summary}
+    - Outcome: {result_type} (Improved: {improved})
+
+    What single Google search query would best help you find theoretical explanations or similar studies to discuss in your report? 
+    Return ONLY the query string, no quotes or explanation.
+    """)
+])
+
+# ============================================================
+# Helper Functions
+# ============================================================
 
 def _calculate_log_error(conductivity: float, target: float = Config.TARGET_CONDUCTIVITY) -> float:
-    """Calculate log-scale error (orders of magnitude)"""
-    if conductivity is None or conductivity <= 0:
-        return float('inf')
-    return abs(math.log10(conductivity) - math.log10(target))
-
+    """Calculate signed log error. Positive = overestimate, Negative = underestimate"""
+    if conductivity is None or conductivity <= 0: return 10.0
+    return math.log10(conductivity) - math.log10(target)  # No abs()
 
 def _generate_diff(previous_code: str, current_code: str) -> str:
-    """Generate unified diff between two code versions"""
-    if not previous_code:
-        return "(First iteration - no previous code)"
+    if not previous_code: return "(First pass - comparing against baseline)"
     
     diff = difflib.unified_diff(
         previous_code.splitlines(keepends=True),
@@ -93,172 +112,191 @@ def _generate_diff(previous_code: str, current_code: str) -> str:
     diff_text = ''.join(diff)
     return diff_text if diff_text else "(No changes detected)"
 
-
-def _search_references(hypothesis: str, result_type: str) -> str:
-    """Search Tavily for relevant references"""
-    try:
-        from tavily import TavilyClient
-        import os
-        
-        api_key = os.getenv("TAVILY_API_KEY")
-        if not api_key:
-            return "(No Tavily API key - using prior knowledge)"
-        
-        client = TavilyClient(api_key=api_key)
-        
-        # Generate search query based on result
-        if result_type == "SUCCESS":
-            query = f"kMC simulation {hypothesis} mechanism physical explanation"
-        elif result_type == "NEUTRAL":
-            query = f"kMC simulation error increase despite improvement {hypothesis}"
-        else:
-            query = f"kMC simulation code error {hypothesis}"
-        
-        response = client.search(query=query, max_results=3)
-        
-        refs = []
-        for i, result in enumerate(response.get("results", [])[:3]):
-            refs.append(f"[{i+1}] {result.get('title', 'N/A')}\n    {result.get('content', '')}")
-        
-        return "\n\n".join(refs) if refs else "(No relevant references found)"
-        
-    except Exception as e:
-        return f"(Search failed: {e})"
-
-
 def _classify_result(is_success: bool, error_delta: float) -> str:
-    """Classify result as SUCCESS/NEUTRAL/FAILURE"""
-    if not is_success:
-        return "FAILURE"
-    elif error_delta < 0:  # Error decreased
-        return "SUCCESS"
-    else:  # Error increased or same
-        return "NEUTRAL"
+    if not is_success: return "FAILURE"
+    elif error_delta < 0: return "SUCCESS"
+    else: return "NEUTRAL"
 
+def _format_batch_details(relaxed_hurdles: List[dict]) -> str:
+    parts = []
+    for h in relaxed_hurdles:
+        parts.append(f"### {h.get('name', 'Unknown')}")
+        parts.append(f"**Reason:** {h.get('reason', '')}")
+        parts.append(f"**Changes:** {h.get('changes', '')}")
+        parts.append("")
+    return "\n".join(parts)
+
+# ============================================================
+# Agent Node
+# ============================================================
 
 def archivist_node(state: AgentState, llm) -> dict:
-    """Archivist: Generate technical report and archive knowledge"""
-    print("[Archivist] Analyzing experiment and generating technical report...")
+    """Archivist: Batch Report Generation"""
+    print("\n📜 [Archivist] Generating Batch Technical Report...")
     
     result = state.get("simulation_output")
-    python_code = state.get("python_code", "")
-    scientist_code = state.get("scientist_code", python_code) # Use Scientist's code for diff (intended logic)
+    current_code = state.get("current_code", "")
     previous_code = state.get("previous_code", "")
     
-    # Fallback: If no previous code (1st iteration), use initial_state.py
+    # Load previous code from file if missing (Baseline)
     if not previous_code:
         try:
             with open(os.path.join(Config.INITIAL_STATE_DIR, "initial_state.py"), "r", encoding="utf-8") as f:
                 previous_code = f.read()
-            print("   [Diff] Using initial_state.py as baseline")
-        except Exception:
-            previous_code = ""
+        except: previous_code = ""
 
-    hypothesis = state.get("hypothesis", "")
-    run_dir = state.get("run_dir")
-    iteration = state.get("iteration_count", 0)
-    research_log = state.get("research_log", [])
-    # prev_log_error is retrieved directly from state (default 10.0)
-    prev_log_error = state.get("current_log_error", 10.0)
-    
+    # Calculate Metrics
     target = Config.TARGET_CONDUCTIVITY
+    curr_cond = result.conductivity if result and result.conductivity else 0.0
     
-    # Calculate log-scale errors
-    curr_conductivity = result.conductivity if result and result.conductivity else 0.0
+    # Calculate Log Values for Display
+    if target > 0:
+        target_log = f"{math.log10(target):.2f}"
+    else:
+        target_log = "Undefined"
+        
+    if curr_cond > 0:
+        result_log = f"{math.log10(curr_cond):.2f}"
+    else:
+        result_log = "FAIL"
     
-    # For first iteration, use initial_state.json conductivity as baseline
-    if iteration <= 1:
-        try:
-            import json
-            initial_json_path = os.path.join(Config.INITIAL_STATE_DIR, "initial_state.json")
-            with open(initial_json_path, "r", encoding="utf-8") as f:
-                initial_data = json.load(f)
-            initial_conductivity = initial_data.get("conductivity", 0.0)
-            prev_log_error = _calculate_log_error(initial_conductivity) if initial_conductivity > 0 else 10.0
-            print(f"   [Baseline] Using initial_state.json conductivity: {initial_conductivity} S/cm")
-        except Exception:
-            prev_log_error = 10.0
-    
-    curr_log_error = _calculate_log_error(curr_conductivity) if curr_conductivity > 0 else 10.0
+    # Baseline comparison (Always compare against Initial State in Single Pass)
+    try:
+        with open(os.path.join(Config.INITIAL_STATE_DIR, "initial_state.json"), "r") as f:
+            init_data = json.load(f)
+            init_cond = init_data.get("conductivity", 0.0)
+            prev_log_error = _calculate_log_error(init_cond)
+    except:
+        prev_log_error = 10.0
+        
+    curr_log_error = _calculate_log_error(curr_cond)
     error_delta = curr_log_error - prev_log_error
     
-    # Generate diff (Compare previous vs Scientist's intended code)
-    diff_text = _generate_diff(previous_code, scientist_code)
-    print(f"   [1/4] Generated diff ({len(diff_text)} chars)")
+    # Improvement check: |final| < |initial| means closer to experiment
+    improved = "Yes" if abs(curr_log_error) < abs(prev_log_error) else "No"
     
-    # Classify result
+    # Direction: overestimate (positive) or underestimate (negative)
+    if curr_log_error > 0.1:
+        direction = "Overestimate (simulation σ > experiment σ)"
+    elif curr_log_error < -0.1:
+        direction = "Underestimate (simulation σ < experiment σ)"
+    else:
+        direction = "On target (within 0.1 orders)"
+    
+    # Generate Diff
+    diff_text = _generate_diff(previous_code, current_code)
+    
+    # Classify
     is_success = result.is_success if result else False
     result_type = _classify_result(is_success, error_delta)
-    print(f"   [2/4] Result classification: {result_type}")
     
-    # Search references via Tavily
-    references = _search_references(hypothesis, result_type)
-    print(f"   [3/4] Searched references")
+    # Search References (Simplified for Batch: Search Strategy Keywords)
+    relaxed_hurdles = state.get("relaxed_hurdles", [])
+    target = state.get("target_assumption", "")
     
-    # Generate technical report via LLM
+    strategy_str = "Batch Optimization"
+    if relaxed_hurdles:
+        strategy_str = relaxed_hurdles[0].get("name", "Batch Optimization")
+    
+    print(f"   Searching references for: {strategy_str}")
+    references = "No references."
+    try:
+        # Generate dynamic search query
+        search_query_chain = SEARCH_QUERY_PROMPT | llm | StrOutputParser()
+        query = search_query_chain.invoke({
+            "strategy": strategy_str,
+            "relaxed_hurdles_summary": _format_batch_details(relaxed_hurdles),
+            "result_type": result_type,
+            "improved": improved
+        }).strip().strip('"')
+        
+        print(f"   Generated Query: {query}")
+        
+        results = web_search(query, max_results=2)
+        references = format_search_results(results)
+    except Exception as e:
+        print(f"   Search failed: {e}")
+
+    # Generate Report
     try:
         chain = ANALYSIS_PROMPT | llm | StrOutputParser()
         
+        batch_details_str = _format_batch_details(relaxed_hurdles)
+        
         report = chain.invoke({
-            "hypothesis": hypothesis if hypothesis else "N/A",
-            "diff": diff_text,
-            "is_success": is_success,
-            "conductivity": curr_conductivity,
+            "strategy": strategy_str,
+            "targets": target,
+            "result_type": result_type,
+            "target_log": target_log,
+            "result_log": result_log,
             "prev_log_error": prev_log_error,
             "curr_log_error": curr_log_error,
-            "error_delta": error_delta,
-            "error_message": result.error_message if result and result.error_message else "None",
-            "debug_summary": state.get("debug_summary", "No debugging needed."),
-            "references": references
+            "improved": improved,
+            "direction": direction,
+            "is_success": is_success,
+            "error_message": result.error_message if result else "None",
+            "diff_summary": diff_text,
+            "batch_details_str": batch_details_str
         })
-        print(f"   [4/4] Generated technical report ({len(report)} chars)")
         
-    except Exception as e:
-        report = f"(Report generation failed: {e})"
-        print(f"   [4/4] Report generation failed: {e}")
-    
-    # Save technical report to memory
-    from kokoa.memory import save_to_memory
-    
-    full_report = f"""
-# Technical Report - Iteration {iteration}
+        print(f"   -> Report Generated ({len(report)} chars)")
+        
+        # Extract assumption ID from target (e.g., "A1", "A2")
+        import re
+        assumption_id_match = re.search(r'\b(A\d+)\b', target, re.IGNORECASE)
+        target_assumption_id = assumption_id_match.group(1).upper() if assumption_id_match else ""
+        
+        # 1. Save to Vector Store (embedding-only: Analysis + Advice)
+        from kokoa.memory import save_to_memory
+        save_to_memory(
+            content=report,  # Only the LLM-generated content, no diff
+            collection="technical_reports",
+            metadata={
+                "run_id": state.get("run_id"),
+                "type": "BATCH",
+                "result_type": result_type,
+                "target": target,
+                "target_assumption_id": target_assumption_id  # For filtering
+            },
+            force=True
+        )
+        print(f"   -> Saved to technical_reports (embedding, assumption={target_assumption_id})")
+        
+        # 2. Save Full Report to Central Folder (technical_reports/)
+        run_id = state.get("run_id", "unknown")
+        central_reports_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "technical_reports")
+        os.makedirs(central_reports_dir, exist_ok=True)
+        
+        # Include references in the report with AI generation markers
+        full_report = f"""<!-- Generated by {Config.MODEL_NAME} -->
+
+# Batch Technical Report
 
 {report}
 
----
-## Appendix: Code Diff
+<!-- End of AI-generated content -->
+
+## References
+{references}
+
+## Full Diff
 ```diff
 {diff_text}
-```
+```"""
+        report_filename = f"{run_id}_{result_type}.md"
+        central_report_path = os.path.join(central_reports_dir, report_filename)
+        with open(central_report_path, "w", encoding="utf-8") as f:
+            f.write(full_report)
+        print(f"   -> Saved report to {central_report_path}")
+        
+    except Exception as e:
+        print(f"   Report generation failed: {e}")
 
-Timestamp: {datetime.now().isoformat()}
-""".strip()
-    
-    saved = save_to_memory(
-        content=full_report,
-        collection="technical_reports",
-        metadata={
-            "iteration": iteration,
-            "result_type": result_type,
-            "log_error": curr_log_error,
-            "error_delta": error_delta,
-            "conductivity": curr_conductivity
-        },
-        run_dir=run_dir
-    )
-    
-    if saved:
-        print(f"   -> Saved technical report to 'technical_reports'")
-    
     return {
-        "research_log": research_log + [f"Archivist: {result_type} - Report saved"],
-        "previous_code": python_code,  # Update previous_code for next iteration
-        "current_log_error": curr_log_error  # Store log error directly
+        "research_log": state["research_log"] + ["Archivist: Batch Report Complete"]
     }
 
-
 def create_archivist_node(llm):
-    """Factory function to create archivist node with LLM"""
     def node_fn(state: AgentState) -> dict:
         return archivist_node(state, llm)
     return node_fn
