@@ -1,0 +1,11 @@
+{
+  "is_success": true,
+  "conductivity": 0.0002890966791878845,
+  "diffusivity": 1.8186492226808011e-09,
+  "msd": 109.12141206277849,
+  "simulation_time_ns": 1000.0225323085925,
+  "temperature_K": 300,
+  "steps": 58382,
+  "error_message": null,
+  "execution_log": "Completed 58382 steps in 1000.02 ns with Coulomb-corrected barriers (E_a0=0.35 eV, alpha_coul=0.02 eV/unit)"
+}

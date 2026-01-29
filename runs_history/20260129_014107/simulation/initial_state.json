@@ -1,0 +1,11 @@
+{
+  "is_success": true,
+  "conductivity": 0.0026559331737379273,
+  "diffusivity": 1.6707942877377265e-08,
+  "msd": 183.8117141879888,
+  "simulation_time_ns": 183.3576157330454,
+  "temperature_K": 300,
+  "steps": 100800,
+  "error_message": null,
+  "execution_log": "Completed 100800 steps in 183.36 ns with SRO-initialized Li configuration"
+}

@@ -1,0 +1,11 @@
+{
+  "is_success": true,
+  "conductivity": 0.0,
+  "diffusivity": 0,
+  "msd": 0.0,
+  "simulation_time_ns": 0.0,
+  "temperature_K": 300,
+  "steps": 0,
+  "error_message": null,
+  "execution_log": "Completed 0 steps in 0.00ns"
+}

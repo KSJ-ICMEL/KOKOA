@@ -1,0 +1,46 @@
+🚀 KOKOA Start (Run: 20260128_154846) [Single-Pass Batch]
+📁 Output: C:\Users\sjkim\KOKOA\runs\20260128_154846
+🎯 Goal: Objective: Reduce the gap between simulation and reality by progressively relaxing idealized assumptions in the kMC model.
+        Approach: Add realistic physical factors (site energies, correlation effects, lattice dynamics) and governing equations to capture real ionic transport behavior.
+        Validation: Experimental bulk Li-ion conductivity = 1.63e-6 S/cm at 300K. The simulation value should naturally approach this target as physical realism improves.
+🔧 Model: gpt-oss:120b
+
+============================================================
+
+
+👨‍🔬 [Scientist] Iteration 1 (Analysis & Implementation Mode)
+
++------------+--------------------+--------------------+--------------------+
+|   State    |    σ_ion [S/cm]    |     log(σ_ion)     |     abs(error)     |
++------------+--------------------+--------------------+--------------------+
+| Target     | 1.97000e-06        | -5.70553377        | -                  |
+| Init       | 2.49290e-03        | -2.60329444        | 3.10223933         |
++------------+--------------------+--------------------+--------------------+
+
+   🧠 Step 1: Analyzing Missing Physics...
+   -> Diagnosis: The current kinetic Monte Carlo model vastly overestimates Li‑ion conductivity because it assumes a uniform low activation energy and ignores many critical physical factors. Site‑energy heterogeneity, Coulombic Li‑Li repulsion, lattice dynamics (phonon‑assisted hopping), bottleneck geometry, correlation effects (Haven ratio < 1), multi‑ion concerted migration, temperature‑dependent kinetic parameters, vacancy ordering, and local lattice relaxation are all omitted. These missing ingredients cause the hopping rates to be unrealistically high, leading to a conductivity three orders of magnitude larger than the experimental value.
+   -> Missing Physics: ['Site‑energy heterogeneity for different Li sites (e.g., 24d vs 96h)', 'Coulombic interactions between Li ions (electrostatic repulsion and screening)', 'Lattice dynamics and phonon‑assisted hopping contributions to migration barriers', 'Bottleneck geometry effects (size/shape of migration pathways) on activation energies', 'Correlation effects and Haven ratio (non‑ideal Nernst‑Einstein relation)', 'Multi‑ion concerted hopping mechanisms (collective migration events)', 'Temperature‑dependent activation energies and attempt frequencies', 'Short‑range ordering of Li vacancies and ions (thermodynamic distribution)', 'Local lattice relaxation and elastic strain effects on barrier heights', 'Polarization/polaronic effects influencing ion transport', 'Grain‑boundary or defect‑related transport barriers', 'Electrostatic potential landscape (including long‑range interactions) in kMC']
+   -> Queries: ['DFT calculated site energies for Li in 24d and 96h positions of LLZO', 'Effect of Coulomb repulsion on Li+ migration barriers in garnet‑type solid electrolytes', 'Phonon‑assisted hopping rate expressions for Li+ in oxide solid electrolytes', 'Relationship between bottleneck radius and Li+ migration energy barrier in LLZO', 'Experimental Haven ratio for Li‑ion conductivity in LLZO and methods to compute it from kMC', 'Collective multi‑ion hopping mechanisms (ring exchange, concerted migration) in Li7La3Zr2O12', 'Temperature dependence of attempt frequency and activation energy for Li+ diffusion in solid electrolytes', 'Short‑range ordering of Li vacancies in LLZO and its impact on ionic conductivity', 'Lattice relaxation and elastic strain effects on Li+ migration barriers from DFT studies', 'Polaronic and polarization effects on Li‑ion transport in oxide solid electrolytes', 'Implementation of long‑range electrostatic interactions in kinetic Monte Carlo for ionic conductors (Ewald summation, screened Coulomb)', 'Parameterization of site‑specific migration barriers for Li+ in LLZO using cluster expansion or machine‑learning potentials', 'Effect of grain boundaries on Li‑ion conductivity in LLZO and how to incorporate them into kMC models', 'Correlation factor (Haven ratio) calculation for Li+ diffusion in disordered lattices', 'Monte Carlo methods for generating thermodynamically stable Li/vacancy distributions in LLZO']
+   🔍 Step 2: Retrieving Knowledge...
+   [1/3] Searching RAG: DFT calculated site energies for Li in 24d and 96h positions of LLZO...
+   [2/3] Web Search (15 queries)...
+   [Tavily] Found 2 results for: DFT calculated site energies for Li in 24d and 96h...
+   [Tavily] Found 2 results for: Effect of Coulomb repulsion on Li+ migration barri...
+   [Tavily] Found 2 results for: Phonon‑assisted hopping rate expressions for Li+ i...
+   💻 Step 3: Implementing Improvements...
+   ⚠️ Failed to extract code block. Falling back to previous code.
+   -> Generated 0 bytes of code
+
+🚀 Simulator Starting...
+
+📜 [Archivist] Generating Batch Technical Report...
+   Searching references for: Added: Site‑energy heterogeneity for different Li sites (e.g., 24d vs 96h), Coulombic interactions between Li ions (electrostatic repulsion and screening), Lattice dynamics and phonon‑assisted hopping contributions to migration barriers, Bottleneck geometry effects (size/shape of migration pathways) on activation energies, Correlation effects and Haven ratio (non‑ideal Nernst‑Einstein relation), Multi‑ion concerted hopping mechanisms (collective migration events), Temperature‑dependent activation energies and attempt frequencies, Short‑range ordering of Li vacancies and ions (thermodynamic distribution), Local lattice relaxation and elastic strain effects on barrier heights, Polarization/polaronic effects influencing ion transport, Grain‑boundary or defect‑related transport barriers, Electrostatic potential landscape (including long‑range interactions) in kMC
+   Generated Query: kinetic Monte Carlo Li ion diffusion site energy heterogeneity Coulomb repulsion lattice dynamics bottleneck geometry Haven ratio concerted hopping
+   [Tavily] Found 2 results for: kinetic Monte Carlo Li ion diffusion site energy h...
+   -> Report Generated (8423 chars)
+   Report generation failed: Expected metadata value to be a str, int, float, bool, SparseVector, or None, got ['Site‑energy heterogeneity for different Li sites (e.g., 24d vs 96h)', 'Coulombic interactions between Li ions (electrostatic repulsion and screening)', 'Lattice dynamics and phonon‑assisted hopping contributions to migration barriers', 'Bottleneck geometry effects (size/shape of migration pathways) on activation energies', 'Correlation effects and Haven ratio (non‑ideal Nernst‑Einstein relation)', 'Multi‑ion concerted hopping mechanisms (collective migration events)', 'Temperature‑dependent activation energies and attempt frequencies', 'Short‑range ordering of Li vacancies and ions (thermodynamic distribution)', 'Local lattice relaxation and elastic strain effects on barrier heights', 'Polarization/polaronic effects influencing ion transport', 'Grain‑boundary or defect‑related transport barriers', 'Electrostatic potential landscape (including long‑range interactions) in kMC'] which is a list in upsert.
+
+Try filtering complex metadata from the document using langchain_community.vectorstores.utils.filter_complex_metadata.
+
+============================================================
+🏁 Experiment Complete
