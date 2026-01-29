@@ -35,3 +35,27 @@
 🚀 Simulator Starting...
    💾 Saved code to: C:\Users\sjkim\KOKOA\runs\20260129_215159\simulation\final_state.py
    📄 Copied LLZO.cif to: C:\Users\sjkim\KOKOA\runs\20260129_215159\simulation\LLZO.cif
+
++------------+--------------------+--------------------+--------------------+
+|   State    |    σ_ion [S/cm]    |     log(σ_ion)     |     error (±)      |
++------------+--------------------+--------------------+--------------------+
+|   Target   |    1.97000e-06     |    -5.70553377     |         -          |
+|  Initial   |    2.49000e-03     |    -2.60380065     |    +3.10173312     |
+|   Final    |    2.20070e-03     |    -2.65743916     |    +3.04809462     |
++------------+--------------------+--------------------+--------------------+
+
+📜 [Archivist] Generating Batch Technical Report...
+   Searching references for: Added: Site-dependent Li site energies for crystallographically distinct sites (24d vs 96h) in cubic LLZO
+   Generated Query: LLZO 24d 96h site energies migration barriers kinetic Monte Carlo
+   [Tavily] Found 2 results for: LLZO 24d 96h site energies migration barriers kine...
+   -> Report Generated (5720 chars)
+   [Memory] Saved to 'technical_reports': ## Result: SUCCESS
+
+## Analysis
+
+The update introd...
+   -> Saved to technical_reports (embedding, assumption=A4)
+   -> Saved report to C:\Users\sjkim\KOKOA\technical_reports\20260129_215159_SUCCESS.md
+
+============================================================
+🏁 Experiment Complete
