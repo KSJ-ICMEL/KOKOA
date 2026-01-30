@@ -1,0 +1,11 @@
+{
+  "is_success": true,
+  "conductivity": 3.900661872245085e-07,
+  "diffusivity": 2.4538281455972036e-12,
+  "msd": 0.14857796333422704,
+  "simulation_time_ns": 1009.1576271740544,
+  "temperature_K": 300,
+  "steps": 70,
+  "error_message": null,
+  "execution_log": "Completed 70 steps in 1009.16ns with non-Poisson waiting times (Weibull k=0.7)"
+}

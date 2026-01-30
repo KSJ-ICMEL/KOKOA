@@ -1,0 +1,13 @@
+{
+  "is_success": true,
+  "conductivity": 0.00027267790082610705,
+  "diffusivity_tracer": 1.715361981233075e-08,
+  "diffusivity_sigma": 1.715361981233075e-09,
+  "haven_ratio": 0.1,
+  "msd": 187.0919031211768,
+  "simulation_time_ns": 181.78077976937868,
+  "temperature_K": 300,
+  "steps": 100000,
+  "error_message": null,
+  "execution_log": "Completed 100000 steps in 181.78ns; Haven ratio H=0.100"
+}

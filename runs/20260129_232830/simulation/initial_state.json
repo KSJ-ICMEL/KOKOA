@@ -1,0 +1,15 @@
+{
+  "is_success": true,
+  "conductivity": 0.005806657345771341,
+  "diffusivity": 3.652851668143055e-08,
+  "msd": 238.78037110421195,
+  "simulation_time_ns": 108.94701491560845,
+  "temperature_K": 300,
+  "steps": 100000,
+  "error_message": null,
+  "execution_log": "Completed 100000 steps in 108.95ns with distance-dependent migration barriers",
+  "Ea_fit_slope_eV_per_A": -0.4960000000000002,
+  "Ea_fit_intercept_eV": 1.6323599999999991,
+  "Ea_sample_min_eV": 0.26,
+  "Ea_sample_max_eV": 0.45
+}
